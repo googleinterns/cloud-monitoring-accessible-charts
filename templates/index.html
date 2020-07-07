@@ -40,7 +40,8 @@
          */
         const drawChart = async () => {
             const url = 'http://127.0.0.1:5000/';
-            const response = await fetch(url+"data/chart-001.json");
+            const chartName = "chart-001.json";
+            const response = await fetch(url+"data/"+chartName);            
             const data = await response.json();
            
             const formatedData = Array(data["timeSeries"].length);
@@ -84,7 +85,9 @@
                         .y((d) => yScale(d[0]))
                         .x((d) =>  xScale(d[1]))
                     ).attr("transform", 
-                    "translate(" + margin.left + ", " + margin.top + ")");
+                    "translate(" + margin.left + ", " + margin.top + ")")
+                    .attr("id", "id"+index)
+                    .attr("class", "timeSeries");
             });
 
             let modes = ["Default", "K-means", "DBSCAN"];
@@ -99,8 +102,20 @@
 
             modeSelector.on("change", updateChart);
 
-            function updateChart() {
+            async function updateChart() {
                 let currentMode = modeSelector.property("value");
+                if (currentMode == "Default"){
+                    d3.selectAll(".timeSeries")
+                        .attr("stroke", (d) => colorScale(d))
+                }else{
+                    let clusteringResponse = await fetch(url+currentMode+"/"+chartName);
+                    const data = await clusteringResponse.json();
+                    console.log(data);
+                    data.forEach((elt,index) => {
+                        d3.selectAll("#id" +index)
+                            .attr("stroke", colorScale(elt))
+                })
+                }
             }
         }
 
