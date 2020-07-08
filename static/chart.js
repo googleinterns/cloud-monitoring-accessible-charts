@@ -20,7 +20,7 @@ function formatPoints(points) {
 const drawChart = async () => {
     const url = 'http://127.0.0.1:5000/';
     const chartId = "001";
-    const response = await fetch(url + "data/" + chartId);
+    const response = await fetch(url + "dat/" + chartId);
 
     if (response.status >= 200 && response.status <= 299){
         const data = await response.json();
@@ -79,8 +79,15 @@ const drawChart = async () => {
 
         modeSelector.on("change", updateChart);
 
+        function updateChart() {
+            let currentMode = modeSelector.property("value");
+        }
+        
     } else{
-        console.log(Response.status);
+        d3.select("svg#chart").append("text")
+            .attr("x", 20)
+            .attr("y", 20)
+            .text("Error: " + response.status + ".");
     }
 }
 
