@@ -9,10 +9,10 @@ def homepage():
     """"Renders the index page of the app."""
     return render_template("index.html")
 
-@app.route("/data/<file_name>")
-def send_data(file_name):
+@app.route("/data/<chart_id>")
+def send_data(chart_id):
     """Sends the requested file."""
-    with open('./'+str(file_name),"r") as json_file:
+    with open('./data/chart-'+str(chart_id)+".json","r") as json_file:
         data = json.load(json_file)
     return data
 
