@@ -1,6 +1,7 @@
 import json
-from sklearn.cluster import KMeans
+from sklearn.cluster import KMeans, DBSCAN
 import numpy as np
+from sklearn.preprocessing import MinMaxScaler
 
 def time_series_array(data):
     """Converts the time series data to an np array.
@@ -12,7 +13,6 @@ def time_series_array(data):
         An np array where each row represents a resource and each column 
         represents the value at time t.
     """
-
     num_instances = len(data["timeSeries"])
     # assumes that this instance has all the dates
     num_times = len(data["timeSeries"][0]["points"])
@@ -33,27 +33,40 @@ def time_series_array(data):
     
     return np.array(data_array)
 
-def kmeans(file_name):
+def kmeans(data):
     """Generates clusters using kmeans.
     
     Args:
-        file_name: The name of the file containing the data that k-means 
-        clustering will be run on.
+        data: A timeSeries object.
 
     Returns:
         A list of cluster labels such that the nth element in the list 
         represents the cluster the nth element was placed in. Cluster labels
         are integers.
     """
-
-    with open('./'+str(file_name),"r") as json_file:
-        data = json.load(json_file)
-    
     data_array = time_series_array(data)
+    scaled_data = [arr-val for arr,val in zip(data_array,data_array.min(axis=1))]
 
-    min_vals = data_array.min(axis=1)
-    new_data = [arr-val for arr,val in zip(data_array,min_vals)]
-
-    kmeans = KMeans(n_clusters=7, random_state=0).fit(new_data)
-
+    kmeans = KMeans(n_clusters=7, random_state=0).fit(scaled_data)
     return kmeans.labels_
+
+def dbscan(data):
+    """Generates clusters using DBSCAN.
+    
+    Args:
+        data: A timeSeries object.
+
+    Returns:
+        A list of cluster labels such that the nth element in the list 
+        represents the cluster the nth element was placed in. Cluster labels
+        are integers.
+    """
+    data_array = time_series_array(data)
+    scaled_data = [arr-val for arr,val in zip(data_array,data_array.min(axis=1))]
+
+    min_max_scaler = MinMaxScaler()
+    min_max_scaled = min_max_scaler.fit_transform(scaled_data)
+
+    # dbscan = DBSCAN(eps=.05, min_samples=1).fit(scaled_data)
+    dbscan = DBSCAN(eps=1, min_samples=1).fit(min_max_scaled)
+    return dbscan.labels_
