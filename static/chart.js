@@ -49,7 +49,7 @@ const drawChart = async () => {
             return d3.max([acc, d3.max(cur[0])])}, 0);
         let yScale = d3.scaleLinear().domain([0, maxY]).range([h, 0]);
         svg.append("g").call(d3.axisLeft(yScale))
-            .attr("color", "DimGrey")
+            .attr("color", "#404040")
             .attr("transform",
                 "translate(" + margin.left + ", " + margin.top + ")");
 
@@ -57,9 +57,15 @@ const drawChart = async () => {
         let minX = formatedData[0][1][formatedData[0][1].length - 1];
         let xScale = d3.scaleTime().domain([minX, maxX]).range([0, w]);
         svg.append("g").call(d3.axisBottom(xScale))
-            .attr("color", "DimGrey")
+            .attr("color", "#404040")
             .attr("transform",
                 "translate(" + margin.left + ", " + (h + margin.top) + ")");
+        
+        svg.append("g")
+            .call(d3.axisLeft(yScale).tickSize(-w).tickFormat(""))
+            .attr("color", "lightgrey")
+            .attr("transform",
+                "translate(" + margin.left + ", " + margin.top + ")");
 
         let colorScale = d3.scaleOrdinal(d3.schemeCategory10);
 
