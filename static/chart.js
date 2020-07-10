@@ -15,6 +15,17 @@ function formatPoints(points) {
 }
 
 /**
+ * Displays an error message with the status argument.
+ * @param {string} status The error status.
+ */
+function showError(status) {
+    d3.select("svg#chart").append("text")
+    .attr("x", 20)
+    .attr("y", 20)
+    .text("Error: " + status + ".");
+}
+
+/**
  * Draws the chart.
  */
 const drawChart = async () => {
@@ -86,21 +97,22 @@ const drawChart = async () => {
             if (currentMode == "Default"){
                 d3.selectAll(".timeSeries")
                     .attr("stroke", (d) => colorScale(d));
-            }else{
-                let clusteringResponse = await fetch(url+currentMode+"/"+chartId);
-                const data = await clusteringResponse.json();
-                data.forEach((elt,index) => {
-                    d3.selectAll("#id" +index)
-                        .attr("stroke", colorScale(elt));
-                })
+            } else {
+                let response = await fetch(url + currentMode + "/" + chartId);
+                if (response.status >= 200 && response.status <= 299){
+                    const data = await response.json();
+                    data.forEach((elt,index) => {
+                        d3.selectAll("#id" +index)
+                            .attr("stroke", colorScale(elt));
+                    })
+                } else {
+                    showError(response.status);
+                }
             }
         }
         
-    } else{
-        d3.select("svg#chart").append("text")
-            .attr("x", 20)
-            .attr("y", 20)
-            .text("Error: " + response.status + ".");
+    } else {
+        showError(response.status);
     }
 }
 
