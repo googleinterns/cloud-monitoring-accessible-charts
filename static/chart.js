@@ -87,43 +87,7 @@ const drawChart = async () => {
                     .attr("id", "id"+index)
                     .attr("class", "timeSeries");
             });
-
-            let modes = ["Default", "K-means", "DBSCAN"];
-            let modeSelector = d3.select("select#modeSelector");
-
-            modeSelector.selectAll("option")
-                .data(modes)
-                .enter()
-                .append("option")
-                .attr("value", (d) => d)
-                .text((d) => d);
-
-            modeSelector.on("change", updateChart);
-
-            async function updateChart() {
-                let currentMode = modeSelector.property("value");
-                if (currentMode == "Default"){
-                    d3.selectAll(".timeSeries")
-                        .attr("stroke", (d) => colorScale(d))
-                        .attr("opacity", 1);
-                } else {
-                    let query = "clustering/" + currentMode + "/" + chartId;
-                    try {
-                        let response = await fetch(url + query);
-                        if (response.status >= 200 && response.status <= 299){
-                            const data = await response.json();
-                            data.forEach((elt,index) => {
-                                d3.selectAll("#id" + index)
-                                    .attr("stroke", colorScale(elt));
-                            });
-                        } else {
-                            showError(response.status);
-                        }
-                    } catch(error) {
-                        showError(error);
-                    }
-                }
-            }          
+            selectors(url, chartId, colorScale);         
         } else {
             showError(response.status);
         }
