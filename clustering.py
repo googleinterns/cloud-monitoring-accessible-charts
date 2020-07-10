@@ -3,6 +3,7 @@ from sklearn.cluster import KMeans, DBSCAN
 import numpy as np
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.neighbors import NearestNeighbors
+import random
 
 def time_series_array(data):
     """Converts the time series data to an np array.
@@ -18,21 +19,16 @@ def time_series_array(data):
     # assumes that this instance has all the dates
     num_times = len(data["timeSeries"][0]["points"])
     data_array = [0]*num_instances
-
     date_to_index = {}
-    instance_to_index = {}
 
-    for ts in data["timeSeries"]:
-        points = [0]*num_times
-        instance_id = ts["resource"]["labels"]["instance_id"]
-        instance_to_index[instance_id] = len(instance_to_index)
+    for index,ts in enumerate(data["timeSeries"]):
+        points = [-1]*num_times
         for point in ts["points"]:
             start_time = point["interval"]["startTime"]
             if start_time not in date_to_index:
                 date_to_index[start_time] = len(date_to_index)
             points[date_to_index[start_time]] = point["value"]["doubleValue"]
-        data_array[instance_to_index[instance_id]] = points
-    
+        data_array[index] = points
     return np.array(data_array)
 
 def scale_to_zero(data):
