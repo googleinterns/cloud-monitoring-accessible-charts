@@ -17,7 +17,7 @@ def send_data(chart_id):
         data = json.load(json_file)
     return data
 
-@app.route("/<algorithm>/<chart_id>")
+@app.route("/clustering/<algorithm>/<chart_id>")
 def cluster(algorithm, chart_id):
     """Returns the cluster each time series was placed in.
     

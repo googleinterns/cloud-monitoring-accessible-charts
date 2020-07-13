@@ -19,6 +19,8 @@ function formatPoints(points) {
  * @param {string} status The error status.
  */
 function showError(status) {
+    d3.selectAll(".timeSeries")
+        .attr("opacity", 0);
     d3.select("svg#chart").append("text")
     .attr("x", 20)
     .attr("y", 20)
@@ -38,10 +40,10 @@ const drawChart = async () => {
         const formatedData = Array(data["timeSeries"].length);
         data["timeSeries"].forEach((elt, index) => {
             formatedData[index] = formatPoints(elt["points"]);
-        })
+        });
 
-        let margin = { left: 40, right: 20, top: 20, bottom: 40 };
-        let svg = d3.select("svg#chart")
+        let margin = { left: 40, right: 20, top: 30, bottom: 40 };
+        let svg = d3.select("svg#chart");
         let h = svg.attr("height") - margin.bottom - margin.top;
         let w = svg.attr("width") - margin.left - margin.right;
 
@@ -102,9 +104,11 @@ const drawChart = async () => {
             let currentMode = modeSelector.property("value");
             if (currentMode == "Default"){
                 d3.selectAll(".timeSeries")
-                    .attr("stroke", (d) => colorScale(d));
+                    .attr("stroke", (d) => colorScale(d))
+                    .attr("opacity", 0);
             } else {
-                let response = await fetch(url + currentMode + "/" + chartId);
+                let query = "clustering/" + currentMode + "/" + chartId;
+                let response = await fetch(url + query);
                 if (response.status >= 200 && response.status <= 299){
                     const data = await response.json();
                     data.forEach((elt,index) => {
