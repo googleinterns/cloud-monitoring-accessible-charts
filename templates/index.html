@@ -2,10 +2,18 @@
 
 <head>
     <title>Monitoring Accessible Charts</title>
+    <script src="https://d3js.org/d3.v5.min.js"></script>
 </head>
 
 <body>
-    Hello!
+    <h2>Monitoring Accessible Charts</h2>
+
+    <div>
+        <select name="selectedMode" id="modeSelector"></select>
+    </div>
+    <svg width="600" height="400" id="chart"></svg>
+    
+    <script src="{{url_for('static',filename='chart.js')}}"></script>
 </body>
 
 </html>
