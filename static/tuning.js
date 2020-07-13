@@ -11,8 +11,7 @@ const tuning = async (mode) => {
             + chartIds[index]);
         let distances = await response.json();
 
-        let points = [];
-        distances.forEach((elt,index) => points.push(index+1));
+        let points = distances.map((elt,index) => index+1);
 
         d3.select("body")
             .append("div")

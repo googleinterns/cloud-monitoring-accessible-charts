@@ -15,18 +15,21 @@ def time_series_array(data):
         An np array where each row represents a resource and each 
         column represents the value at time t.
     """
-    num_instances = len(data["timeSeries"])
-    # assumes that this instance has all the dates
-    num_times = len(data["timeSeries"][0]["points"])
-    data_array = [0]*num_instances
     date_to_index = {}
+    for index,ts in enumerate(data["timeSeries"]):
+        for point in ts["points"]:
+            start_time = point["interval"]["startTime"]
+            if start_time not in date_to_index:
+                date_to_index[start_time] = len(date_to_index)
+    
+    num_instances = len(data["timeSeries"])
+    num_times = len(date_to_index)
+    data_array = [0]*num_instances
 
     for index,ts in enumerate(data["timeSeries"]):
         points = [-1]*num_times
         for point in ts["points"]:
             start_time = point["interval"]["startTime"]
-            if start_time not in date_to_index:
-                date_to_index[start_time] = len(date_to_index)
             points[date_to_index[start_time]] = point["value"]["doubleValue"]
         data_array[index] = points
     return np.array(data_array)
@@ -42,9 +45,10 @@ def scale_to_zero(data):
         An np array of the scaled data.
     """
     data_array = time_series_array(data)
-    scaled_data = [arr - val for arr,val in zip(data_array,
+    min_data = np.min(data_array)
+    scaled_data = [arr - abs(min_data - val) for arr,val in zip(data_array,
         data_array.min(axis=1))]
-    return scaled_data
+    return scaled_data + abs(min_data)
     
 def tuning_k(data):
     """Runs k-means clustering with different values of k and creates a 
@@ -75,7 +79,7 @@ def tuning_eps(data):
     
     Returns:
         A sorted list of the distance of each time series to its 
-        closest neigbor.
+        closest neighbor.
     """
     scaled_data = scale_to_zero(data)
     min_max_scaler = MinMaxScaler()
@@ -99,8 +103,8 @@ def kmeans(data):
         labels are integers.
     """
     scaled_data = scale_to_zero(data)
-
-    kmeans = KMeans(n_clusters = len(scaled_data) // 16 + 8, 
+    tuning_ratio, tuning_min_clusters = len(scaled_data) // 16, 8
+    kmeans = KMeans(n_clusters = tuning_ratio + tuning_min_clusters, 
         random_state = 0).fit(scaled_data)
     return kmeans.labels_
 

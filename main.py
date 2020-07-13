@@ -22,7 +22,7 @@ def cluster(algorithm, chart_id):
     """Returns the cluster each time series was placed in.
     
     Args:
-        algorithm: The algorithm used for clustering. Must be "K-means" 
+        algorithm: The algorithm used for clustering. Must be "K-means"
             or "DBSCAN".
         chart_id: The id of the file containing the data that k-means 
             clustering is run on.
@@ -34,7 +34,7 @@ def cluster(algorithm, chart_id):
     with open('./data/chart-' + str(chart_id) + ".json","r") as json_file:
         data = json.load(json_file)
 
-    if algorithm == "K-means":
+    if algorithm.lower() == "k-means":
         labels = clustering.kmeans(data)
     else:
         labels = clustering.dbscan(data)
@@ -48,7 +48,7 @@ def tune_parameters(algorithm, chart_id):
     with open('./data/chart-' + str(chart_id) + ".json","r") as json_file:
         data = json.load(json_file)
 
-    if algorithm == "K-means":
+    if algorithm.lower() == "k-means":
         distances = clustering.tuning_k(data)
     else:
         distances = clustering.tuning_eps(data)
