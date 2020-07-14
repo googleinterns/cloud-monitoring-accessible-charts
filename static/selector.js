@@ -9,16 +9,14 @@ const selectors = async (url, chartId, colorScale) => {
     createSelector("similarity", similarity);
 
     async function updateChart() {
-        let currentMode = modeSelector.property("value");
-        let currentSimilarity =  similaritySelector.property("value");
-
+        let currentMode = d3.select("select#modeSelector").property("value");
+        let currentSimilarity = d3.select("select#similaritySelector")
+            .property("value");
         if (currentMode == "Default"){
             d3.selectAll(".timeSeries")
                 .attr("stroke", (d) => colorScale(d))
                 .attr("opacity", 1);
         } else {
-            let currentMode = d3.select("select#modeSelector");
-            let currentSimilarity = d3.select("select#similaritySelector");
             let query = currentMode + "/" + currentSimilarity + "/" + chartId;
             let response = await fetch(url + "clustering/" + query);
             if (response.status >= 200 && response.status <= 299){
