@@ -4,26 +4,9 @@
  */
 const selectors = async (url, chartId, colorScale) => {
     let modes = ["Default", "K-means", "DBSCAN"];
-    let modeSelector = d3.select("select#modeSelector");
-    modeSelector.selectAll("option")
-        .data(modes)
-        .enter()
-        .append("option")
-        .attr("value", (d) => d)
-        .text((d) => d);
-
-    modeSelector.on("change", updateChart);
-
     let similarity = ["Correlation", "Proximity"];
-    let similaritySelector = d3.select("select#similaritySelector");
-    similaritySelector.selectAll("option")
-        .data(similarity)
-        .enter()
-        .append("option")
-        .attr("value", (d) => d)
-        .text((d) => d);
-
-    similaritySelector.on("change", updateChart);
+    createSelector("mode", modes);
+    createSelector("similarity", similarity);
 
     async function updateChart() {
         let currentMode = modeSelector.property("value");
@@ -31,9 +14,13 @@ const selectors = async (url, chartId, colorScale) => {
 
         if (currentMode == "Default"){
             d3.selectAll(".timeSeries")
-                .attr("stroke", (d) => colorScale(d));
+                .attr("stroke", (d) => colorScale(d))
+                .attr("opacity", 1);
         } else {
-            let response = await fetch(url + currentMode + "/" + currentSimilarity + "/" + chartId);
+            let currentMode = d3.select("select#modeSelector");
+            let currentSimilarity = d3.select("select#similaritySelector");
+            let query = currentMode + "/" + currentSimilarity + "/" + chartId;
+            let response = await fetch(url + "clustering/" + query);
             if (response.status >= 200 && response.status <= 299){
                 const data = await response.json();
                 data.forEach((elt,index) => {
@@ -44,5 +31,17 @@ const selectors = async (url, chartId, colorScale) => {
                 showError(response.status);
             }
         }
+    }
+
+    function createSelector(name, options){
+        let selector = d3.select("select#"+ name + "Selector");
+        selector.selectAll("option")
+                .data(options)
+                .enter()
+                .append("option")
+                .attr("value", (d) => d)
+                .text((d) => d);
+
+        selector.on("change", updateChart);
     }
 }
