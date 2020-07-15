@@ -14,6 +14,9 @@ const selectors = async (url, chartId, colorScale) => {
         let currentMode = d3.select("select#modeSelector").property("value");
         let currentSimilarity = d3.select("select#similaritySelector")
             .property("value");
+        d3.select("select#clusterSelector").property("value","All");
+        updateCluster();
+        
         if (currentMode == "Default"){
             d3.selectAll(".timeSeries")
                 .attr("stroke", (d) => colorScale(d))
