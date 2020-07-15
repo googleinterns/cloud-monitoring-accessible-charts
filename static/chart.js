@@ -85,7 +85,7 @@ const drawChart = async () => {
                     ).attr("transform",
                         "translate(" + margin.left + ", " + margin.top + ")")
                     .attr("id", "id"+index)
-                    .attr("class", "timeSeries");
+                    .attr("class", "timeSeries cluster-All");
             });
             selectors(url, chartId, colorScale);         
         } else {
