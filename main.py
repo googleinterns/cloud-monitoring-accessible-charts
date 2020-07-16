@@ -37,7 +37,7 @@ def cluster(algorithm, similarity, chart_id):
         data = json.load(json_file)
     time_series_data = clustering.time_series_array(data)
     
-    if algorithm.lower() == "K-means":
+    if algorithm.lower() == "k-means":
         labels = clustering.kmeans(time_series_data, similarity)
     else:
         labels = clustering.dbscan(time_series_data, similarity)

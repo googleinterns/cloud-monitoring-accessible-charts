@@ -44,10 +44,9 @@ def scale_to_zero(data):
     Returns: 
         An np array of the scaled data.
     """
-    data_array = time_series_array(data)
-    min_data = np.min(data_array)
-    scaled_data = [arr - abs(min_data - val) for arr,val in zip(data_array,
-        data_array.min(axis=1))]
+    min_data = np.min(data)
+    scaled_data = [arr - abs(min_data - val) for arr,val in zip(data,
+        data.min(axis=1))]
     return scaled_data + abs(min_data)
     
 def tuning_k(data):
