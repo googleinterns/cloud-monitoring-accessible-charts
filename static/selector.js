@@ -1,3 +1,4 @@
+/* eslint-disable quotes */
 /**
  * Creates the selectors for the chart and updates the chart based on the
  * selected values.
@@ -9,9 +10,9 @@ const selectors = async (url, chartId, colorScale) => {
   const modes = ["Default", "K-means", "DBSCAN"];
   const similarity = ["Correlation", "Proximity"];
   let clusters = ["All"];
-  createSelector("mode", modes);
-  createSelector("similarity", similarity);
-  createSelector("cluster", clusters);
+  createSelector("mode", modes, updateChart);
+  createSelector("similarity", similarity, updateChart);
+  createSelector("cluster", clusters, updateCluster);
 
   /**
    * Updates the chart according to the values of the selectors.
@@ -20,7 +21,7 @@ const selectors = async (url, chartId, colorScale) => {
     const currentMode = d3.select("select#modeSelector").property("value");
     const currentSimilarity = d3.select("select#similaritySelector")
         .property("value");
-    d3.select("select#clusterSelector").property("value", "All");
+    createSelector("cluster", ["All"], updateCluster);
     updateCluster();
 
     if (currentMode == "Default") {
@@ -33,22 +34,14 @@ const selectors = async (url, chartId, colorScale) => {
       if (response.status >= 200 && response.status <= 299) {
         const data = await response.json();
         data.forEach((elt, index) => {
-          d3.selectAll("#id" +index)
+          d3.selectAll("#id" + index)
               .attr("stroke", colorScale(elt))
               .attr("class", "timeSeries " + "cluster-All " +
                             "cluster-" + elt);
         });
         clusters = ["All"].concat(Array.from(new Set(data)))
             .sort((a, b) => a-b);
-        const selector = d3.select("select#"+ "cluster" + "Selector");
-        selector.selectAll("option")
-            .data(clusters)
-            .enter()
-            .append("option")
-            .attr("value", (d) => d)
-            .text((d) => d);
-
-        selector.on("change", updateCluster);
+        createSelector("cluster", clusters, updateCluster);
       } else {
         showError(response.status);
       }
@@ -59,17 +52,17 @@ const selectors = async (url, chartId, colorScale) => {
    * Update the selector element called name with options.
    * @param {string} name The name of the selector element.
    * @param {Array} options The options of the selector element.
+   * @param {string} updateFunction The function for updating the selector.
    */
-  function createSelector(name, options) {
+  function createSelector(name, options, updateFunction) {
     const selector = d3.select("select#"+ name + "Selector");
     selector.selectAll("option")
         .data(options)
-        .enter()
-        .append("option")
+        .join("option")
         .attr("value", (d) => d)
         .text((d) => d);
 
-    selector.on("change", updateChart);
+    selector.on("change", updateFunction);
   }
 
   /**
@@ -80,11 +73,9 @@ const selectors = async (url, chartId, colorScale) => {
         .property("value");
 
     d3.selectAll(".timeSeries")
-        .attr("stroke", (d) => colorScale(d))
         .attr("opacity", 0);
 
     d3.selectAll(".cluster-" + currentCluster)
-        .attr("stroke", (d) => colorScale(d))
         .attr("opacity", 1);
   }
 };
