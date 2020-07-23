@@ -7,12 +7,15 @@
 const selectors = async (chartId, colorScale) => {
   const modes = ["Default", "K-means", "DBSCAN"];
   const similarity = ["Correlation", "Proximity"];
+  const encoding = ["None", "One-Hot"];
   let clusters = ["All"];
   updateSelector("mode", modes);
   updateSelector("similarity", similarity);
+  updateSelector("encoding", encoding);
   updateSelector("cluster", clusters);
   d3.select("select#" + "mode" + "Selector").on("change", updateChart);
   d3.select("select#" + "similarity" + "Selector").on("change", updateChart);
+  d3.select("select#" + "encoding" + "Selector").on("change", updateChart);
   d3.select("select#" + "cluster" + "Selector").on("change", updateCluster);
 
   /**
@@ -22,6 +25,8 @@ const selectors = async (chartId, colorScale) => {
     const currentMode = d3.select("select#modeSelector").property("value");
     const currentSimilarity = d3.select("select#similaritySelector")
         .property("value");
+    const currentEncoding = d3.select("select#encodingSelector")
+        .property("value");
     updateSelector("cluster", ["All"]);
     updateCluster();
     if (currentMode == "Default") {
@@ -29,8 +34,9 @@ const selectors = async (chartId, colorScale) => {
           .attr("stroke", (d) => colorScale(d))
           .attr("opacity", 1);
     } else {
-      const query = currentMode + "/" + currentSimilarity + "/" + chartId;
-      const response = await callFetch("clustering/" + query);
+      const query = currentMode + "/" + currentSimilarity + "/" +
+        currentEncoding + "/" + chartId;
+      const response = await callFetch("clustering/" + query.toLowerCase());
       if (response.status >= 200 && response.status <= 299) {
         const data = await response.json();
         data.forEach((elt, index) => {
