@@ -34,10 +34,9 @@ function showError(status) {
  * Requests the data and draws the chart.
  */
 const drawChart = async () => {
-  const url = 'http://127.0.0.1:5000/';
   const chartId = "001";
   try {
-    const response = await fetch(url + "data/" + chartId);
+    const response = await callFetch("data/" + chartId);
 
     if (response.status >= 200 && response.status <= 299) {
       const data = await response.json();
@@ -91,7 +90,7 @@ const drawChart = async () => {
             .attr("id", "id"+index)
             .attr("class", "timeSeries cluster-All");
       });
-      selectors(url, chartId, colorScale);
+      selectors(chartId, colorScale);
     } else {
       showError(response.status);
     }

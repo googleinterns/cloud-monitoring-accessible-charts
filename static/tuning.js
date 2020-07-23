@@ -3,11 +3,10 @@
  * @param {string} mode The algorithm for which a paramter is being tuned.
  */
 const tuning = async (mode) => {
-  const url = "http://127.0.0.1:5000/";
   const chartIds = ["001", "002", "004", "005"];
 
   for (let index = 0; index < chartIds.length; index++) {
-    const response = await fetch(url + "tuning/" + mode + "/" +
+    const response = await callFetch("tuning/" + mode + "/" +
             chartIds[index]);
     const distances = await response.json();
 
