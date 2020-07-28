@@ -1,4 +1,4 @@
-"""This module contains functions for counting the frequency of elements.
+"""This module contains functions for counting elements: dates, labels.
 """
 
 def one_hot_encoding(ts_labels, label_to_index, labels_encoded):
@@ -34,7 +34,7 @@ def count_labels(ts_labels, label_count):
         else:
             label_count[label_value] += 1
 
-def get_dates_labels(data, date_to_index, label_to_count, label_encoding):
+def get_dates_labels(data, date_to_index, label_to_count, min_max):
     """Updates date_to_index and label_to_count to include all unique
     dates and the count of each unique label, respectively.
 
@@ -51,6 +51,11 @@ def get_dates_labels(data, date_to_index, label_to_count, label_encoding):
             start_time = point["interval"]["startTime"]
             if start_time not in date_to_index:
                 date_to_index[start_time] = len(date_to_index)
-        if label_encoding == "one-hot":
-            count_labels(time_series["metric"]["labels"], label_to_count)
-            count_labels(time_series["resource"]["labels"], label_to_count)
+            val = point["value"]["doubleValue"]
+            if val < min_max[0]:
+                min_max[0] = val
+            if val > min_max[1]:
+                min_max[1] = val
+
+        count_labels(time_series["metric"]["labels"], label_to_count)
+        count_labels(time_series["resource"]["labels"], label_to_count)

@@ -1,8 +1,8 @@
 /**
  * Formats points for graphing.
  * @param {Array} points TimeSeries points. Ordered from most recent to oldest.
- * @return {Array} An array where the first element representing the time
- * series values and the corresponding dates.
+ * @return {Array} An array where the first element represents the time
+ * series value and the second element represents the corresponding date.
  */
 function formatPoints(points) {
   const n = points.length;
@@ -27,6 +27,7 @@ function showError(status) {
   d3.select("svg#chart").append("text")
       .attr("x", 20)
       .attr("y", 20)
+      .attr("id", "err")
       .text("Error: " + status + ".");
 }
 
@@ -34,7 +35,7 @@ function showError(status) {
  * Requests the data and draws the chart.
  */
 const drawChart = async () => {
-  const chartId = "001";
+  const chartId = "002";
   try {
     const response = await callFetch("data/" + chartId);
 

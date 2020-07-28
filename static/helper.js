@@ -3,6 +3,6 @@
  * @param {string} query Route for fetch.
  * @return {Promise} Response for fetch.
  */
-const callFetch = (query) => {
+let callFetch = (query) => {
   return fetch('http://127.0.0.1:5000/' + query);
 };

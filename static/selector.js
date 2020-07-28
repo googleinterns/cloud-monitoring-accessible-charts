@@ -53,32 +53,32 @@ const selectors = async (chartId, colorScale) => {
       }
     }
   }
-
-  /**
-   * Update the selector element called name with options.
-   * @param {string} name The name of the selector element.
-   * @param {Array} options The options of the selector element.
-   */
-  function updateSelector(name, options) {
-    const selector = d3.select("select#" + name + "Selector");
-    selector.selectAll("option")
-        .data(options)
-        .join("option")
-        .attr("value", (d) => d)
-        .text((d) => d);
-  }
-
-  /**
-   * Updates the chart to show the selected cluster.
-   */
-  function updateCluster() {
-    const currentCluster = d3.select("select#clusterSelector")
-        .property("value");
-
-    d3.selectAll(".timeSeries")
-        .attr("opacity", 0);
-
-    d3.selectAll(".cluster-" + currentCluster)
-        .attr("opacity", 1);
-  }
 };
+
+/**
+ * Update the selector element called name with options.
+ * @param {string} name The name of the selector element.
+ * @param {Array} options The options of the selector element.
+ */
+function updateSelector(name, options) {
+  const selector = d3.select("select#" + name + "Selector");
+  selector.selectAll("option")
+      .data(options)
+      .join("option")
+      .attr("value", (d) => d)
+      .text((d) => d);
+}
+
+/**
+ * Updates the chart to show the selected cluster.
+ */
+function updateCluster() {
+  const currentCluster = d3.select("select#clusterSelector")
+      .property("value");
+
+  d3.selectAll(".timeSeries")
+      .attr("opacity", 0);
+
+  d3.selectAll(".cluster-" + currentCluster)
+      .attr("opacity", 1);
+}

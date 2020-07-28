@@ -1,19 +1,16 @@
 import json
-import random
 from statistics import median
 import numpy as np
 from sklearn.cluster import KMeans, DBSCAN
 from sklearn.preprocessing import MinMaxScaler, scale
 from sklearn.neighbors import NearestNeighbors
-import frequency
+import count
 
-def time_series_array(data, label_encoding):
+def time_series_array(data):
     """Converts the time series data to an np array.
 
     Args:
         data: A timeSeries object.
-        label_encoding: The way in which the labels are encoded. Must be
-        "none" or "one-hot" encoding.
 
     Returns:
         An np array where each row represents a resource and each column
@@ -21,9 +18,9 @@ def time_series_array(data, label_encoding):
         to an index and an np array where each row represents a time series
         and each column represents a label as defined in the label dictionary.
     """
-    date_to_index, label_to_count = {}, {}
-    frequency.get_dates_labels(data, date_to_index, label_to_count,
-                               label_encoding)
+    first_val = data["timeSeries"][0]["points"][0]["value"]["doubleValue"]
+    date_to_index, label_to_count, min_max = {}, {}, [first_val, first_val]
+    count.get_dates_labels(data, date_to_index, label_to_count, min_max)
 
     labels = list(filter(lambda k: label_to_count[k] > 2 and label_to_count[k]
                          < len(data["timeSeries"]), label_to_count.keys()))
@@ -37,23 +34,49 @@ def time_series_array(data, label_encoding):
         points = [-1]*num_times
         for point in time_series["points"]:
             start_time = point["interval"]["startTime"]
-            points[date_to_index[start_time]] = point["value"]["doubleValue"]
+            points[date_to_index[start_time]] = scale_to_range_ten(
+                min_max, point["value"]["doubleValue"])
         data_array[index] = points
 
         encoding = [0]*len(label_to_index)
-        if label_encoding == "one-hot":
-            frequency.one_hot_encoding(time_series["metric"]["labels"],
-                                       label_to_index, encoding)
-            frequency.one_hot_encoding(time_series["resource"]["labels"],
-                                       label_to_index, encoding)
+        count.one_hot_encoding(time_series["metric"]["labels"],
+                               label_to_index, encoding)
+        count.one_hot_encoding(time_series["resource"]["labels"],
+                               label_to_index, encoding)
         instance_labels[index] = encoding
 
+    return np.array(data_array), label_to_index, np.array(instance_labels)
+
+def scale_to_range_ten(min_max, element):
+    """Scale element to the new range, [0,10].
+
+    Args:
+        min_max: Original range of the data, [min,max].
+        element: Integer that will be scaled to the new range, must be
+            within the old_range.
+
+    Returngs:
+        element scaled to the new range.
+        """
+    new_range = 10
+    old_range = min_max[1] - min_max[0]
+    return  ((element - min_max[0]) * new_range) / old_range
+
+def fill_with_median(data):
+    """Fills missing values (-1) in a time series to the median of the
+    time series.
+
+    Args:
+        data: A list where each row is a resource and each column is a
+        time.
+    """
+    data_array = data
     for row in data_array:
         med = median(list(filter(lambda elt: elt != -1, row)))
         for i, val in enumerate(row):
             if val == -1:
-                row[i] = med + random.uniform(-abs(med)/100, abs(med)/100)
-    return np.array(data_array), label_to_index, np.array(instance_labels)
+                row[i] = med
+    return data_array
 
 def preprocess(data, label_encoding, similarity, ts_to_labels):
     """Updates the data according to label_encoding and similarity.
@@ -72,10 +95,10 @@ def preprocess(data, label_encoding, similarity, ts_to_labels):
         An np array updated according to label_encoding and similarity.
     """
     updated_data = data
-    if label_encoding == "one-hot":
-        updated_data = np.concatenate((updated_data, ts_to_labels), axis=1)
     if similarity == "correlation":
         updated_data = scale_to_zero(updated_data)
+    if label_encoding == "one-hot":
+        updated_data = np.concatenate((updated_data, ts_to_labels), axis=1)
     return updated_data
 
 def scale_to_zero(data):
@@ -192,5 +215,32 @@ def cluster_to_labels(cluster_labels, resource_to_label):
 
     for index, element in enumerate(cluster_labels):
         cluster_to_label[element] += resource_to_label[index]
-
     return np.multiply(cluster_to_label.T, 1/np.array(values)).T
+
+def sort_labels(label_dict, cluster_labels, ts_to_labels):
+    """Returns a list of the sorted labels, an np array of clusters to
+    labels, and an np array of time series to labels. In the np arrays,
+    the columns are sorted according to the sorted labels.
+
+    Args:
+        cluster_labels: An array where each row is a cluster and each
+            column is a label.
+        label_dict: A dictionary where each key is a system label and
+            each value is the index of the label in cluster_labels and
+            ts_to_labels.
+        ts_to_labels: An array where each row is a time series and each
+            column is a label.
+    """
+    system_labels = list(label_dict.keys())
+
+    ordered = np.argsort(np.array(system_labels))
+    ordered_labels = [0]*len(system_labels)
+    ordered_ts_labels = np.zeros(ts_to_labels.shape)
+    ordered_cluster_labels = np.zeros(cluster_labels.shape)
+
+    for i, elt in enumerate(ordered):
+        ordered_ts_labels[:, i] = ts_to_labels[:, elt]
+        ordered_cluster_labels[:, i] = cluster_labels[:, elt]
+        ordered_labels[i] = system_labels[elt]
+
+    return ordered_labels, ordered_cluster_labels, ordered_ts_labels
