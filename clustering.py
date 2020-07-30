@@ -44,10 +44,9 @@ def scale_to_zero(data):
     Returns: 
         An np array of the scaled data.
     """
-    data_array = time_series_array(data)
-    min_data = np.min(data_array)
-    scaled_data = [arr - abs(min_data - val) for arr,val in zip(data_array,
-        data_array.min(axis=1))]
+    min_data = np.min(data)
+    scaled_data = [arr - abs(min_data - val) for arr,val in zip(data,
+        data.min(axis=1))]
     return scaled_data + abs(min_data)
     
 def tuning_k(data):
@@ -91,37 +90,42 @@ def tuning_eps(data):
 
     return (np.sort(distance[:,1])).tolist()
 
-def kmeans(data):
+def kmeans(data, similarity):
     """Generates clusters using kmeans.
     
     Args:
         data: A timeSeries object.
+        similarity: The similarity measure used for scaling the data 
+            before clustering. Must be "Proximity" or "Correlation".
 
     Returns:
         A list of cluster labels such that the nth element in the list 
         represents the cluster the nth element was placed in. Cluster 
         labels are integers.
     """
-    scaled_data = scale_to_zero(data)
-    tuning_ratio, tuning_min_clusters = len(scaled_data) // 16, 8
+    if similarity == "Correlation":
+        data = scale_to_zero(data)
+    tuning_ratio, tuning_min_clusters = len(data) // 16, 8
     kmeans = KMeans(n_clusters = tuning_ratio + tuning_min_clusters, 
-        random_state = 0).fit(scaled_data)
+        random_state = 0).fit(data)
     return kmeans.labels_
 
-def dbscan(data):
+def dbscan(data, similarity):
     """Generates clusters using DBSCAN.
     
     Args:
         data: A timeSeries object.
-
+        similarity: The similarity measure used for scaling the data 
+            before clustering. Must be "Proximity" or "Correlation".
     Returns:
         A list of cluster labels such that the nth element in the list 
         represents the cluster the nth element was placed in. Cluster 
         labels are integers.
     """
-    scaled_data = scale_to_zero(data)
+    if similarity == "Correlation":
+        data = scale_to_zero(data)
 
     min_max_scaler = MinMaxScaler()
-    min_max_scaled = min_max_scaler.fit_transform(scaled_data)
+    min_max_scaled = min_max_scaler.fit_transform(data)
     dbscan = DBSCAN(eps=1.2, min_samples=1).fit(min_max_scaled)
     return dbscan.labels_

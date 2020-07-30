@@ -10,9 +10,13 @@
 
     <div>
         <select name="selectedMode" id="modeSelector"></select>
+        <select name="selectedSimilarity" id="similaritySelector"></select>
+        <select name="selectedCluster" id="clusterSelector"></select>
     </div>
     <svg width="600" height="400" id="chart"></svg>
-    
+
+    <script src="{{url_for('static',filename='helper.js')}}"></script>
+    <script src="{{url_for('static',filename='selector.js')}}"></script>
     <script src="{{url_for('static',filename='chart.js')}}"></script>
 </body>
 
