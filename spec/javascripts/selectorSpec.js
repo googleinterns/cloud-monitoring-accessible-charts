@@ -1,6 +1,6 @@
 describe("Suite for selector", function() {
   afterEach(function() {
-    d3.select("select").selectAll("*").remove();
+    d3.selectAll("select").remove();
   });
 
   it("should make an option and set it as the value", function() {

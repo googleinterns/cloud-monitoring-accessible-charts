@@ -93,7 +93,8 @@ const drawChart = async () => {
       });
       selectors(chartId, colorScale);
     } else {
-      showError(response.status);
+      const error = await response.json()
+      showError(response.status + ". " + error.error.message );
     }
   } catch (error) {
     showError(error);

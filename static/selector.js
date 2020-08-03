@@ -34,22 +34,26 @@ const selectors = async (chartId, colorScale) => {
           .attr("stroke", (d) => colorScale(d))
           .attr("opacity", 1);
     } else {
-      const query = currentMode + "/" + currentSimilarity + "/" +
-        currentEncoding + "/" + chartId;
-      const response = await callFetch("clustering/" + query.toLowerCase());
-      if (response.status >= 200 && response.status <= 299) {
-        const data = await response.json();
-        data.forEach((elt, index) => {
-          d3.selectAll("#id" + index)
-              .attr("stroke", colorScale(elt))
-              .attr("class", "timeSeries " + "cluster-All " +
-                            "cluster-" + elt);
-        });
-        clusters = ["All"].concat(Array.from(new Set(data)))
-            .sort((a, b) => a-b);
-        updateSelector("cluster", clusters);
-      } else {
-        showError(response.status);
+      try {
+        const query = currentMode + "/" + currentSimilarity + "/" +
+          currentEncoding + "/" + chartId;
+        const response = await callFetch("clustering/" + query.toLowerCase());
+        if (response.status >= 200 && response.status <= 299) {
+          const data = await response.json();
+          data.forEach((elt, index) => {
+            d3.selectAll("#id" + index)
+                .attr("stroke", colorScale(elt))
+                .attr("class", "timeSeries " + "cluster-All " +
+                              "cluster-" + elt);
+          });
+          clusters = ["All"].concat(Array.from(new Set(data)))
+              .sort((a, b) => a-b);
+          updateSelector("cluster", clusters);
+        } else {
+          showError(response.status);
+        }
+      } catch (error) {
+        showError(error);
       }
     }
   }

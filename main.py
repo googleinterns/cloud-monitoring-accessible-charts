@@ -13,9 +13,18 @@ def homepage():
 @app.route("/data/<chart_id>")
 def send_data(chart_id):
     """Sends the requested file."""
-    with open('./data/chart-' + str(chart_id) + ".json", "r") as json_file:
-        data = json.load(json_file)
-    return data
+    return load_data(chart_id)
+
+def load_data(chart_id):
+    """Tries to load the data. Returns an error message if the file is
+    not found, otherwise returns the loaded data."""
+    try:
+        with open('./data/chart-' + str(chart_id) + ".json", "r") as json_file:
+            return json.load(json_file)
+    except:
+        response = {"success": False, "error": {"type": "FileNotFoundError",
+                                                "message": "No such chart"}}
+        return response, 404
 
 @app.route("/clustering/<algorithm>/<similarity>/<label_encoding>/<chart_id>")
 def cluster(algorithm, similarity, label_encoding, chart_id):
@@ -35,8 +44,9 @@ def cluster(algorithm, similarity, label_encoding, chart_id):
         A string of the list containing the label of the cluster each
         time series was grouped in.
     """
-    with open('./data/chart-' + str(chart_id) + ".json", "r") as json_file:
-        data = json.load(json_file)
+    data = load_data(chart_id)
+    if "timeSeries" not in data:
+        return data
     time_series_data, label_dict, ts_to_labels = clustering.time_series_array(
         data)
     time_series_data = clustering.preprocess(time_series_data, label_encoding,
@@ -66,8 +76,9 @@ def frequency(similarity, label_encoding, chart_id):
         labels per cluster.
 
     """
-    with open('./data/chart-' + str(chart_id) + ".json", "r") as json_file:
-        data = json.load(json_file)
+    data = load_data(chart_id)
+    if "timeSeries" not in data:
+        return data
     time_series_data, label_dict, ts_to_labels = clustering.time_series_array(
         data)
     time_series_data = clustering.preprocess(time_series_data, label_encoding,
@@ -97,8 +108,9 @@ def tune_parameters(algorithm, similarity, label_encoding, chart_id):
         chart_id: The id of the file containing the data that k-means
             clustering is run on.
     """
-    with open('./data/chart-' + str(chart_id) + ".json", "r") as json_file:
-        data = json.load(json_file)
+    data = load_data(chart_id)
+    if "timeSeries" not in data:
+        return data
     time_series_data, _, ts_to_labels = clustering.time_series_array(
         data)
     time_series_data = clustering.preprocess(time_series_data, label_encoding,
@@ -108,6 +120,13 @@ def tune_parameters(algorithm, similarity, label_encoding, chart_id):
     else:
         distances = clustering.tuning_eps(time_series_data)
     return str(distances)
+
+@app.route("/<path>")
+def invalid_route(path):
+    """Catches all invalid routes."""
+    response = {"success": False, "error": {"type": "RouteNotFoundError",
+                                            "message": "No such route"}}
+    return response, 404
 
 # runs the flask app
 if __name__ == "__main__":
