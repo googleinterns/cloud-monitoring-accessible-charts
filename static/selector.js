@@ -1,3 +1,4 @@
+/* eslint-disable quotes */
 /**
  * Creates the selectors for the chart and updates the chart based on the
  * selected values.
@@ -5,7 +6,7 @@
  * @param {function} colorScale A d3 colorscale used for the line colors.
  */
 const selectors = async (chartId, colorScale) => {
-  const modes = ["Default", "K-means", "DBSCAN"];
+  const modes = ["Default", "K-means", "DBSCAN", "Zone"];
   const similarity = ["Correlation", "Proximity"];
   const encoding = ["None", "One-Hot"];
   let clusters = ["All"];
@@ -35,19 +36,27 @@ const selectors = async (chartId, colorScale) => {
           .attr("opacity", 1);
     } else {
       try {
-        const query = currentMode + "/" + currentSimilarity + "/" +
-          currentEncoding + "/" + chartId;
+        let query = currentMode + "/" + currentSimilarity + "/" +
+        currentEncoding + "/" + chartId;
+        if (currentMode == "Zone") {
+          query = query + "/" + "zone";
+        }
         const response = await callFetch("clustering/" + query.toLowerCase());
         if (response.status >= 200 && response.status <= 299) {
           const clusterAssignment = await response.json();
-          clusterAssignment.forEach((elt, index) => {
+          const labels = Object.values(clusterAssignment["cluster_labels"]);
+          labels.forEach((elt, index) => {
             d3.selectAll("#id" + index)
                 .attr("stroke", colorScale(elt))
                 .attr("class", "timeSeries " + "cluster-All " +
                               "cluster-" + elt);
           });
-          clusters = ["All"].concat(Array.from(new Set(clusterAssignment)))
-              .sort((a, b) => a-b);
+          if (Number.isInteger(labels[0])) {
+            clusters = ["All"].concat(Array.from(new Set(labels)))
+                .sort((a, b) => a-b);
+          } else {
+            clusters = ["All"].concat(Array.from(new Set(labels))).sort();
+          }
           updateSelector("cluster", clusters);
         } else {
           showError(response.status);
