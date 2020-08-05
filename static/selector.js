@@ -5,7 +5,7 @@
  * @param {function} colorScale A d3 colorscale used for the line colors.
  */
 const selectors = async (chartId, colorScale) => {
-  const modes = ["Default", "K-means", "DBSCAN"];
+  const modes = ["Default", "K-means", "DBSCAN", "K-means-constrained"];
   const similarity = ["Correlation", "Proximity"];
   const encoding = ["None", "One-Hot"];
   let clusters = ["All"];

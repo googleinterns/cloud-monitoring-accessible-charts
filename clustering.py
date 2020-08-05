@@ -1,9 +1,12 @@
 import json
 from statistics import median
+import random
 import numpy as np
 from sklearn.cluster import KMeans, DBSCAN
 from sklearn.preprocessing import MinMaxScaler, scale
 from sklearn.neighbors import NearestNeighbors
+from sklearn.metrics import pairwise_distances, pairwise_distances_argmin_min
+from scipy.spatial import distance
 import count
 
 def time_series_array(data):
@@ -151,9 +154,9 @@ def tuning_eps(data):
 
     neighbors = NearestNeighbors(n_neighbors=2)
     fitted = neighbors.fit(min_max_scaled)
-    distance, _ = fitted.kneighbors(min_max_scaled)
+    distances, _ = fitted.kneighbors(min_max_scaled)
 
-    return (np.sort(distance[:, 1])).tolist()
+    return (np.sort(distances[:, 1])).tolist()
 
 def kmeans(data):
     """Generates clusters using kmeans.
@@ -244,3 +247,188 @@ def sort_labels(label_dict, cluster_labels, ts_to_labels):
         ordered_labels[i] = system_labels[elt]
 
     return ordered_labels, ordered_cluster_labels, ordered_ts_labels
+
+def kmeans_constrained(data, label_dict, ts_to_labels):
+    """Runs k-means with constraints and uses k-means++ initialization.
+
+    Args:
+        data: An np array where each row is a time series and each
+            column is a time.
+        label_dict: A dictionary where the keys are labels and the
+            values are the indexes of the labels in data.
+        ts_to_labels: An array where each row is a timeSeries and each
+            column is a label.
+
+    Returns:
+        An np array where the ith element is the cluster the ith time
+        series was placed in.
+    """
+    # make constraints
+    must_link, can_not_link = make_constraints(ts_to_labels)
+
+    num_clusters = (len(data) // 20) + 6
+    clusters_distances = []
+
+    # run multiple times to reinitialize the centroids
+    for run_num in range(15):
+        centroids, centroids_index = k_means_init(data, num_clusters)
+
+        while True:
+            # updated each round
+            old_centroids = centroids.copy()
+            distances = pairwise_distances(data, centroids)
+            clusters = [[] for i in range(num_clusters)]
+            ts_to_cluster = {}
+
+            # assigns ts to clusters
+            for ts_index, dist in enumerate(distances):
+                options = np.argsort(dist)
+                for option in options:
+                    invalid = violates_cons(option, ts_index, ts_to_cluster,
+                                            must_link, can_not_link)
+                    if not invalid:
+                        ts_to_cluster[ts_index] = option
+                        clusters[option].append(ts_index)
+                        break
+
+            # updates centroids
+            valid_clusters = True
+            for cluster_ind, _ in enumerate(centroids):
+                if len(clusters[cluster_ind]) == 0:
+                    valid_clusters = False
+                    break
+                if valid_clusters:
+                    total = np.zeros((centroids.shape[1]))
+                    for ts_index in clusters[cluster_ind]:
+                        total += data[ts_index]
+                    centroids[cluster_ind] = total / len(clusters[cluster_ind])
+
+            if not valid_clusters:
+                break
+
+            # checks if stable
+            if np.array_equal(old_centroids, centroids):
+                assignment = [v for k, v in sorted(ts_to_cluster.items(),
+                                                   key=lambda item: item[0])]
+                center_dist = 0
+                for index, cluster in enumerate(assignment):
+                    center_dist += distance.euclidean(data[index],
+                                                      centroids[cluster])
+                clusters_distances.append([center_dist, assignment, run_num])
+                break
+
+    clusters_distances.sort()
+    return np.array(clusters_distances[0][1])
+
+def k_means_init(data, num_clusters):
+    """Runs k-means++ initialization which spread out the initial
+    cluster centroids.
+
+    Args:
+        data: An np array where each row is a time series and each
+            column is a time.
+        num_clusters: The number of clusters.
+
+    Returns:
+        centroids: An np array with num_clusters centroids.
+    """
+    num_ts = len(data)
+    first = int(num_ts * .2)
+    centroids_index = [first]
+    centroids = np.array([data[first]])
+    for _ in range(num_clusters -1):
+        _, distances = pairwise_distances_argmin_min(data, centroids)
+        choices = random.choices(range(num_ts), weights=distances)
+        picked = choices[0]
+        centroids = np.append(centroids, [data[picked]], axis=0)
+        centroids_index.append(picked)
+    return centroids, centroids_index
+
+def violates_cons(option, ts_index, ts_to_cluster, must_link, can_not_link):
+    """Checks if any constraint is violated by placing ts_index in the
+    cluster option.
+
+    Args:
+        option: The index of the cluster where the time series ts_index
+            may be placed.
+        ts_index: The index of the time series.
+        ts_to_cluster: A dictionary where each key is a time series
+            index and each value is the index of the cluster the time
+            series is assigned to.
+        must_link: A dictionary where each key is a time series index
+            and each value is a list of time series indexes which must
+            be in the same cluster.
+        can_not_link: A dictionary where each key is a time series index
+            and each value is a list of time series indexes which can
+            not be in the same cluster as the key.
+
+    Returns:
+        True if a constraint was violated and False otherwise.
+    """
+    if ts_index in must_link:
+        for ts_2 in must_link[ts_index]:
+            if ts_2 in ts_to_cluster and ts_to_cluster[ts_2] != option:
+                return True
+    if ts_index in can_not_link:
+        for ts_2 in can_not_link[ts_index]:
+            if ts_2 in ts_to_cluster and ts_to_cluster[ts_2] == option:
+                return True
+    return False
+
+def make_constraints(ts_to_labels):
+    """Makes must link and can not link constraints. Uses ts_to_labels
+    to get the unique time series label combinations and makes the
+    constraints based on the label similarity of the time series.
+
+    Args:
+        ts_to_labels: An array where each row is a time series and each
+            column is a label.
+
+    Returns:
+        must_link: A dictionary mapping time series that must link.
+        can_not_link: A dictionary mapping time series that can not
+            link.
+
+    """
+    must_link, can_not_link = {}, {}
+
+    limit = len(ts_to_labels) * .03
+    unique_label_patterns = np.unique(ts_to_labels, axis=0)
+    pattern_to_rows = {}
+    greater_than_limit = []
+
+    for index, row in enumerate(unique_label_patterns):
+        ts_indexes = np.where(np.all(ts_to_labels == row, axis=1))[0]
+        pattern_to_rows[index] = ts_indexes
+        if len(ts_indexes) > limit:
+            greater_than_limit.append(index)
+
+    for pattern, indexes in pattern_to_rows.items():
+        index_1 = np.random.choice(indexes, 1)[0]
+        sec_pattern = np.random.choice(greater_than_limit, 1)[0]
+        index_2 = np.random.choice(pattern_to_rows[sec_pattern], 1)[0]
+        if pattern != sec_pattern:
+            add_link(index_1, index_2, can_not_link)
+        else:
+            add_link(index_1, index_2, can_not_link)
+
+    return must_link, can_not_link
+
+def add_link(index_1, index_2, link_dict):
+    """Adds a link from index_1 to index_2 and index_2 to index_1.
+
+    Args:
+        index_1: Index of the first element.
+        index_2: Index of the second element.
+        link_dict: Dictionary where each key is an element index and
+            each value is a list of elements indexes for which the key
+            has a link.
+    """
+    if index_1 in link_dict:
+        link_dict[index_1].append(index_2)
+    if index_2 in link_dict:
+        link_dict[index_2].append(index_1)
+    if index_1 not in link_dict:
+        link_dict[index_1] = [index_2]
+    if index_2 not in link_dict:
+        link_dict[index_2] = [index_1]

@@ -189,5 +189,67 @@ class TestClusteringMethods(unittest.TestCase):
                     [0, 0, 0]]
         self.assertEqual(result.tolist(), solution)
 
+    def test_add_link_add_index(self):
+        """Should add indexes if not in link_dict."""
+        must_link = {1: [2, 3], 3: [4, 5], 5: [1, 2]}
+        index_1 = 10
+        index_2 = 3
+        clustering.add_link(index_1, index_2, must_link)
+        solution = {1: [2, 3], 3: [4, 5, 10], 5: [1, 2], 10: [3]}
+        self.assertEqual(must_link, solution)
+
+    def test_violates_cons_empty(self):
+        """Should return False if there are no constraints."""
+        option = 2
+        ts_index = 3
+        ts_to_cluster = must_link = can_not_link = {}
+        result = clustering.violates_cons(option, ts_index, ts_to_cluster,
+                                          must_link, can_not_link)
+        self.assertEqual(False, result)
+
+    def test_violates_cons_false(self):
+        """Should return False if must_link matches the option."""
+        option = 2
+        ts_index = 3
+        ts_to_cluster = {2: 2}
+        must_link = {3: [2], 2: [3]}
+        can_not_link = {}
+        result = clustering.violates_cons(option, ts_index, ts_to_cluster,
+                                          must_link, can_not_link)
+        self.assertEqual(False, result)
+
+    def test_violates_cons_multiple_false(self):
+        """Should return False if there is no constraint violated."""
+        option = 2
+        ts_index = 3
+        ts_to_cluster = {2: 2}
+        must_link = {3: [2], 2: [3]}
+        can_not_link = {3: [4, 5], 4: [5, 9], 5: [3, 4], 9: [4]}
+        result = clustering.violates_cons(option, ts_index, ts_to_cluster,
+                                          must_link, can_not_link)
+        self.assertEqual(False, result)
+
+    def test_violates_cons_must_true(self):
+        """Should return true if a must link constraint is violated."""
+        option = 2
+        ts_index = 3
+        ts_to_cluster = {2: 9}
+        must_link = {3: [2], 2: [3]}
+        can_not_link = {3: [4, 5], 4: [5, 9], 5: [3, 4], 9: [4]}
+        result = clustering.violates_cons(option, ts_index, ts_to_cluster,
+                                          must_link, can_not_link)
+        self.assertEqual(True, result)
+
+    def test_violates_cons_cannot_true(self):
+        """Should return true if a cannot link constraint is violated."""
+        option = 2
+        ts_index = 3
+        ts_to_cluster = {9: 2}
+        must_link = {3: [2], 2: [3]}
+        can_not_link = {3: [9], 9:[3]}
+        result = clustering.violates_cons(option, ts_index, ts_to_cluster,
+                                          must_link, can_not_link)
+        self.assertEqual(True, result)
+
 if __name__ == '__main__':
     unittest.main()
