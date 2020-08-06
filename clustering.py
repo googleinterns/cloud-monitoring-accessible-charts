@@ -55,7 +55,7 @@ def scale_to_range_ten(min_max, element):
         element: Integer that will be scaled to the new range, must be
             within the old_range.
 
-    Returngs:
+    Returns:
         element scaled to the new range.
         """
     new_range = 10

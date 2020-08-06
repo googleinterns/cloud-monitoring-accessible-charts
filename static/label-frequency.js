@@ -1,5 +1,5 @@
 /**
- * Fetches the frquency data for the selected chart and plots the data in a
+ * Fetches the frequency data for the selected chart and plots the data in a
  * heatmap.
  * @param {string} chartId The id of the data being fetched and drawn.
  * @param {string} similarity The similairty measure used for clustering.

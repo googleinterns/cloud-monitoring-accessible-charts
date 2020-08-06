@@ -39,14 +39,14 @@ const selectors = async (chartId, colorScale) => {
           currentEncoding + "/" + chartId;
         const response = await callFetch("clustering/" + query.toLowerCase());
         if (response.status >= 200 && response.status <= 299) {
-          const data = await response.json();
-          data.forEach((elt, index) => {
+          const clusterAssignment = await response.json();
+          clusterAssignment.forEach((elt, index) => {
             d3.selectAll("#id" + index)
                 .attr("stroke", colorScale(elt))
                 .attr("class", "timeSeries " + "cluster-All " +
                               "cluster-" + elt);
           });
-          clusters = ["All"].concat(Array.from(new Set(data)))
+          clusters = ["All"].concat(Array.from(new Set(clusterAssignment)))
               .sort((a, b) => a-b);
           updateSelector("cluster", clusters);
         } else {
