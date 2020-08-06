@@ -32,7 +32,8 @@ const selectors = async (chartId, colorScale) => {
     if (currentMode == "Default") {
       d3.selectAll(".timeSeries")
           .attr("stroke", (d) => colorScale(d))
-          .attr("opacity", 1);
+          .attr("opacity", 1)
+          .attr("class", "timeSeries cluster-All");
     } else {
       try {
         const query = currentMode + "/" + currentSimilarity + "/" +

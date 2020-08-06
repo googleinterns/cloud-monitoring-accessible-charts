@@ -88,6 +88,30 @@ const drawChart = async () => {
                 .x((d) => dateScale(d[1])),
             ).attr("transform",
                 "translate(" + margin.left + ", " + margin.top + ")")
+            .on("mouseover", function() {
+              const cluster = d3.select("select#clusterSelector")
+                  .property("value");
+              if (cluster == "All") {
+                d3.select(this)
+                    .attr("stroke-width", 3);
+                const classes = d3.select(this).attr("class").split(" ");
+                const currentClass = classes[classes.length-1];
+                d3.selectAll(".timeSeries")
+                    .attr("opacity", 0.2);
+                d3.selectAll("." + currentClass)
+                    .attr("opacity", 1);
+              }
+            })
+            .on("mouseout", function() {
+              const cluster = d3.select("select#clusterSelector")
+                  .property("value");
+              if (cluster == "All") {
+                d3.select(this)
+                    .attr("stroke-width", 1);
+                d3.selectAll(".timeSeries")
+                    .attr("opacity", 1);
+              }
+            })
             .attr("id", "id"+index)
             .attr("class", "timeSeries cluster-All");
       });
