@@ -263,47 +263,22 @@ def kmeans_constrained(data, label_dict, ts_to_labels):
         series was placed in.
     """
     must_link, can_not_link = make_constraints(ts_to_labels)
-
     num_clusters = (len(data) // 20) + 6
     clusters_distances = []
 
-    # reinitializes the centroids
-    for run_num in range(15):
+    for run_num in range(5):
         centroids = k_means_init(data, num_clusters, run_num)
 
         while True:
             old_centroids = centroids.copy()
-            distances = pairwise_distances(data, centroids)
-            clusters = [[] for i in range(num_clusters)]
-            ts_to_cluster = {}
 
-            # assigns ts to clusters
-            for ts_index, dist in enumerate(distances):
-                options = np.argsort(dist)
-                for option in options:
-                    invalid = violates_cons(option, ts_index, ts_to_cluster,
-                                            must_link, can_not_link)
-                    if not invalid:
-                        ts_to_cluster[ts_index] = option
-                        clusters[option].append(ts_index)
-                        break
-
-            # updates centroids
-            valid_clusters = True
-            for cluster_ind, _ in enumerate(centroids):
-                if len(clusters[cluster_ind]) == 0:
-                    valid_clusters = False
-                    break
-                if valid_clusters:
-                    total = np.zeros((centroids.shape[1]))
-                    for ts_index in clusters[cluster_ind]:
-                        total += data[ts_index]
-                    centroids[cluster_ind] = total / len(clusters[cluster_ind])
+            clusters, ts_to_cluster = update_clusters(data, centroids,
+                                                      must_link, can_not_link)
+            valid_clusters = update_centroids(data, clusters, centroids)
 
             if not valid_clusters:
                 break
 
-            # saves the result if the centroids remained the same
             if np.array_equal(old_centroids, centroids):
                 assignment = [v for k, v in sorted(ts_to_cluster.items(),
                                                    key=lambda item: item[0])]
@@ -316,6 +291,63 @@ def kmeans_constrained(data, label_dict, ts_to_labels):
 
     clusters_distances.sort()
     return np.array(clusters_distances[0][1])
+
+def update_clusters(data, centroids, must_link, can_not_link):
+    """Updates the cluster assignments based on the centroids.
+
+    Args:
+        data: An np array where each row is a time series and each
+            column is a time.
+        centroids: A list of the centroids.
+        must_link: A dictionary mapping time series that must link.
+        can_not_link: A dictionary mapping time series that can't link.
+
+    Returns:
+        clusters: A list where the ith element is a list of the indexes
+            of the elements in the ith cluster.
+        ts_to_cluster: A dictionary mapping each time series to its
+            cluster assignment.
+    """
+    distances = pairwise_distances(data, centroids)
+    clusters = [[] for i in range(len(centroids))]
+    ts_to_cluster = {}
+
+    for ts_index, dist in enumerate(distances):
+        options = np.argsort(dist)
+        for option in options:
+            invalid = violates_cons(option, ts_index, ts_to_cluster,
+                                    must_link, can_not_link)
+            if not invalid:
+                ts_to_cluster[ts_index] = option
+                clusters[option].append(ts_index)
+                break
+    return clusters, ts_to_cluster
+
+def update_centroids(data, clusters, centroids):
+    """Updates the centroids based on the elements in each cluster.
+
+    Args:
+        data: An np array where each row is a time series and each
+            column is a time.
+        clusters: A list where the ith element is a list of the indexes
+            of the elements in the ith cluster.
+        centroids: A list of the centroids.
+
+    Returns:
+        True if the centroids were updated without an error, False
+        otherwise.
+    """
+    valid_clusters = True
+    for cluster_ind, _ in enumerate(centroids):
+        if len(clusters[cluster_ind]) == 0:
+            valid_clusters = False
+            break
+        if valid_clusters:
+            total = np.zeros((centroids.shape[1]))
+            for ts_index in clusters[cluster_ind]:
+                total += data[ts_index]
+            centroids[cluster_ind] = total / len(clusters[cluster_ind])
+    return valid_clusters
 
 def k_means_init(data, num_clusters, run_num):
     """Runs k-means++ initialization which aims to spread out the
@@ -385,8 +417,7 @@ def make_constraints(ts_to_labels):
 
     Returns:
         must_link: A dictionary mapping time series that must link.
-        can_not_link: A dictionary mapping time series that can not
-            link.
+        can_not_link: A dictionary mapping time series that can't link.
 
     """
     np.random.seed(0)
