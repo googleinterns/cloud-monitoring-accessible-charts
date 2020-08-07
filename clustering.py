@@ -1,6 +1,5 @@
 import json
 from statistics import median
-import random
 import numpy as np
 from sklearn.cluster import KMeans, DBSCAN
 from sklearn.preprocessing import MinMaxScaler, scale
@@ -263,18 +262,16 @@ def kmeans_constrained(data, label_dict, ts_to_labels):
         An np array where the ith element is the cluster the ith time
         series was placed in.
     """
-    # make constraints
     must_link, can_not_link = make_constraints(ts_to_labels)
 
     num_clusters = (len(data) // 20) + 6
     clusters_distances = []
 
-    # run multiple times to reinitialize the centroids
+    # reinitializes the centroids
     for run_num in range(15):
-        centroids, centroids_index = k_means_init(data, num_clusters)
+        centroids = k_means_init(data, num_clusters, run_num)
 
         while True:
-            # updated each round
             old_centroids = centroids.copy()
             distances = pairwise_distances(data, centroids)
             clusters = [[] for i in range(num_clusters)]
@@ -306,7 +303,7 @@ def kmeans_constrained(data, label_dict, ts_to_labels):
             if not valid_clusters:
                 break
 
-            # checks if stable
+            # saves the result if the centroids remained the same
             if np.array_equal(old_centroids, centroids):
                 assignment = [v for k, v in sorted(ts_to_cluster.items(),
                                                    key=lambda item: item[0])]
@@ -320,29 +317,31 @@ def kmeans_constrained(data, label_dict, ts_to_labels):
     clusters_distances.sort()
     return np.array(clusters_distances[0][1])
 
-def k_means_init(data, num_clusters):
-    """Runs k-means++ initialization which spread out the initial
+def k_means_init(data, num_clusters, run_num):
+    """Runs k-means++ initialization which aims to spread out the
     cluster centroids.
 
     Args:
         data: An np array where each row is a time series and each
             column is a time.
         num_clusters: The number of clusters.
+        run_num: The number of times k-means has been reinitialized. It
+            is used as the seed for np.random.seed.
 
     Returns:
-        centroids: An np array with num_clusters centroids.
+        An np array where the ith element is the ith cluster centroid.
     """
+    np.random.seed(run_num)
     num_ts = len(data)
     first = int(num_ts * .2)
-    centroids_index = [first]
     centroids = np.array([data[first]])
+
     for _ in range(num_clusters -1):
         _, distances = pairwise_distances_argmin_min(data, centroids)
-        choices = random.choices(range(num_ts), weights=distances)
+        choices = np.random.choice(num_ts, 1, p=distances/np.sum(distances))
         picked = choices[0]
         centroids = np.append(centroids, [data[picked]], axis=0)
-        centroids_index.append(picked)
-    return centroids, centroids_index
+    return centroids
 
 def violates_cons(option, ts_index, ts_to_cluster, must_link, can_not_link):
     """Checks if any constraint is violated by placing ts_index in the
@@ -390,6 +389,7 @@ def make_constraints(ts_to_labels):
             link.
 
     """
+    np.random.seed(0)
     must_link, can_not_link = {}, {}
 
     limit = len(ts_to_labels) * .03
@@ -410,7 +410,7 @@ def make_constraints(ts_to_labels):
         if pattern != sec_pattern:
             add_link(index_1, index_2, can_not_link)
         else:
-            add_link(index_1, index_2, can_not_link)
+            add_link(index_1, index_2, must_link)
 
     return must_link, can_not_link
 
@@ -421,7 +421,7 @@ def add_link(index_1, index_2, link_dict):
         index_1: Index of the first element.
         index_2: Index of the second element.
         link_dict: Dictionary where each key is an element index and
-            each value is a list of elements indexes for which the key
+            each value is a list of element indexes for which the key
             has a link.
     """
     if index_1 in link_dict:
