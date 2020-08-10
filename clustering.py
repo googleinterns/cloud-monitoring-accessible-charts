@@ -4,6 +4,7 @@ import numpy as np
 from sklearn.cluster import KMeans, DBSCAN
 from sklearn.preprocessing import MinMaxScaler, scale
 from sklearn.neighbors import NearestNeighbors
+from scipy.spatial import distance
 import count
 
 def time_series_array(data):
@@ -57,7 +58,7 @@ def scale_to_range_ten(min_max, element):
 
     Returns:
         element scaled to the new range.
-        """
+    """
     new_range = 10
     old_range = min_max[1] - min_max[0]
     return  ((element - min_max[0]) * new_range) / old_range
@@ -170,7 +171,7 @@ def kmeans(data):
     tuning_ratio, tuning_min_clusters = len(data) // 20, 6
     kmeans_result = KMeans(n_clusters=tuning_ratio + tuning_min_clusters,
                            random_state=0).fit(data)
-    return kmeans_result.labels_
+    return kmeans_result.labels_, kmeans_result.cluster_centers_
 
 def dbscan(data):
     """Generates clusters using DBSCAN.
@@ -244,3 +245,24 @@ def sort_labels(label_dict, cluster_labels, ts_to_labels):
         ordered_labels[i] = system_labels[elt]
 
     return ordered_labels, ordered_cluster_labels, ordered_ts_labels
+
+def outliers(data, ts_cluster_labels, cluster_centers, algorithm):
+    """Updates ts_cluster_labels to reflect whether a time series is an
+    outlier in the cluster it was assigned to. '-n' indicates an outlier
+    in cluster n.
+
+    Args:
+        data: Array where each row is a time series and each column is
+            a date.
+        ts_cluster_labels: Array where the ith element is the cluster
+            the ith time series was placed in.
+        cluster_centers: The centroids that were outputted when the
+            clustering algorithm was run.
+        algorithm: The algorithm that was used for clustering the data.
+    """
+    if algorithm == "k-means":
+        data = scale(data)
+    for index, label in enumerate(ts_cluster_labels):
+        euc_dist = distance.euclidean(data[index], cluster_centers[label - 1])
+        if euc_dist > 6.75:
+            ts_cluster_labels[index] = -label

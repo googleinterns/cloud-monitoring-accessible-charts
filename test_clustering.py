@@ -189,5 +189,25 @@ class TestClusteringMethods(unittest.TestCase):
                     [0, 0, 0]]
         self.assertEqual(result.tolist(), solution)
 
+    def test_outliers_simple(self):
+        """Should not make any of the cluster labels outliers."""
+        data = np.array([[0, 10, 9, 7], [1, 7, 9, 6], [3, 4, 3, 3],
+                         [4, 3, 4, 3]])
+        ts_cluster_labels = np.array([1, 1, 2, 2])
+        cluster_centers = np.array([[0.5, 8.5, 9, 6.5], [3.5, 3.5, 3.5, 3]])
+        old = np.copy(ts_cluster_labels)
+        clustering.outliers(data, ts_cluster_labels, cluster_centers, "")
+        self.assertEqual(ts_cluster_labels.tolist(), old.tolist())
+
+    def test_outliers_update_clusters(self):
+        """Should mark some of the time series as outliers."""
+        data = np.array([[0, 10, 9, 7], [1, 7, 9, 6], [3, 4, 3, 3],
+                         [4, 3, 4, 3]])
+        ts_cluster_labels = np.array([1, 1, 2, 2])
+        cluster_centers = np.array([[0.5, 0, 9, 2], [3.5, 3.5, 3.5, 3]])
+        solution = np.array([-1, -1, 2, 2])
+        clustering.outliers(data, ts_cluster_labels, cluster_centers, "")
+        self.assertEqual(ts_cluster_labels.tolist(), solution.tolist())
+
 if __name__ == '__main__':
     unittest.main()

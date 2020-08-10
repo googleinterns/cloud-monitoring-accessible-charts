@@ -26,8 +26,8 @@ def load_data(chart_id):
                                                 "message": "No such chart"}}
         return response, 404
 
-@app.route("/clustering/<algorithm>/<similarity>/<label_encoding>/<chart_id>")
-def cluster(algorithm, similarity, label_encoding, chart_id):
+@app.route("/clustering/<algorithm>/<similarity>/<encoding>/<outlier>/<chart_id>")
+def cluster(algorithm, similarity, encoding, outlier, chart_id):
     """Returns the cluster each time series was placed in.
 
     Args:
@@ -35,8 +35,9 @@ def cluster(algorithm, similarity, label_encoding, chart_id):
             or "DBSCAN".
         similarity: The similarity measure used for scaling the data
             before clustering. Must be "Proximity" or "Correlation".
-        label_encoding: The method used for encoding the labels. Must
+        encoding: The method used for encoding the labels. Must
             be "None" or "One-Hot".
+        outlier: Whether outliers are identified, must be "on" or "off".
         chart_id: The id of the file containing the data that k-means
             clustering is run on.
 
@@ -49,12 +50,15 @@ def cluster(algorithm, similarity, label_encoding, chart_id):
         return data
     time_series_data, label_dict, ts_to_labels = clustering.time_series_array(
         data)
-    time_series_data = clustering.preprocess(time_series_data, label_encoding,
+    time_series_data = clustering.preprocess(time_series_data, encoding,
                                              similarity, ts_to_labels)
     if algorithm == "k-means":
-        labels = clustering.kmeans(time_series_data)
+        labels, centers = clustering.kmeans(time_series_data)
     else:
         labels = clustering.dbscan(time_series_data)
+    labels = labels + 1
+    if outlier == "on" and algorithm != "DBSCAN":
+        clustering.outliers(time_series_data, labels, centers, algorithm)
     return str(labels.tolist())
 
 @app.route("/frequency/<similarity>/<label_encoding>/<chart_id>")

@@ -8,14 +8,17 @@ const selectors = async (chartId, colorScale) => {
   const modes = ["Default", "K-means", "DBSCAN"];
   const similarity = ["Correlation", "Proximity"];
   const encoding = ["None", "One-Hot"];
+  const outlier = ["Off", "On"];
   let clusters = ["All"];
   updateSelector("mode", modes);
   updateSelector("similarity", similarity);
   updateSelector("encoding", encoding);
+  updateSelector("outlier", outlier);
   updateSelector("cluster", clusters);
   d3.select("select#" + "mode" + "Selector").on("change", updateChart);
   d3.select("select#" + "similarity" + "Selector").on("change", updateChart);
   d3.select("select#" + "encoding" + "Selector").on("change", updateChart);
+  d3.select("select#" + "outlier" + "Selector").on("change", updateChart);
   d3.select("select#" + "cluster" + "Selector").on("change", updateCluster);
 
   /**
@@ -27,6 +30,8 @@ const selectors = async (chartId, colorScale) => {
         .property("value");
     const currentEncoding = d3.select("select#encodingSelector")
         .property("value");
+    const currentOutlier = d3.select("select#outlierSelector")
+        .property("value");
     updateSelector("cluster", ["All"]);
     updateCluster();
     if (currentMode == "Default") {
@@ -36,17 +41,24 @@ const selectors = async (chartId, colorScale) => {
     } else {
       try {
         const query = currentMode + "/" + currentSimilarity + "/" +
-          currentEncoding + "/" + chartId;
+          currentEncoding + "/" + currentOutlier + "/" + chartId;
         const response = await callFetch("clustering/" + query.toLowerCase());
         if (response.status >= 200 && response.status <= 299) {
           const clusterAssignment = await response.json();
           clusterAssignment.forEach((elt, index) => {
             d3.selectAll("#id" + index)
-                .attr("stroke", colorScale(elt))
+                .attr("stroke", () => {
+                  if (elt < 0) {
+                    return "#737373";
+                  } else {
+                    return colorScale(elt);
+                  }
+                })
                 .attr("class", "timeSeries " + "cluster-All " +
                               "cluster-" + elt);
           });
-          clusters = ["All"].concat(Array.from(new Set(clusterAssignment)))
+          const uniqueClusters = clusterAssignment.map((elt) => Math.abs(elt));
+          clusters = ["All"].concat(Array.from(new Set(uniqueClusters)))
               .sort((a, b) => a-b);
           updateSelector("cluster", clusters);
         } else {
@@ -84,5 +96,8 @@ function updateCluster() {
       .attr("opacity", 0);
 
   d3.selectAll(".cluster-" + currentCluster)
+      .attr("opacity", 1);
+
+  d3.selectAll(".cluster--" + currentCluster)
       .attr("opacity", 1);
 }
