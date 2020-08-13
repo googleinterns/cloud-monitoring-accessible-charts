@@ -53,12 +53,10 @@ def cluster(algorithm, similarity, encoding, outlier, chart_id):
     time_series_data = clustering.preprocess(time_series_data, encoding,
                                              similarity, ts_to_labels)
     if algorithm == "k-means":
-        labels, centers = clustering.kmeans(time_series_data)
+        labels = clustering.kmeans(time_series_data, outlier)
     else:
-        labels = clustering.dbscan(time_series_data)
-    labels = labels + 1
-    if outlier == "on" and algorithm != "DBSCAN":
-        clustering.outliers(time_series_data, labels, centers, algorithm)
+        labels = clustering.dbscan(time_series_data, outlier)
+
     return str(labels.tolist())
 
 @app.route("/frequency/<similarity>/<label_encoding>/<chart_id>")
@@ -87,7 +85,7 @@ def frequency(similarity, label_encoding, chart_id):
         data)
     time_series_data = clustering.preprocess(time_series_data, label_encoding,
                                              similarity, ts_to_labels)
-    labels = clustering.kmeans(time_series_data)
+    labels = clustering.kmeans(time_series_data, "off")
     cluster_labels = clustering.cluster_to_labels(labels, ts_to_labels)
 
     ordered_labels, ordered_clusters, ordered_ts = clustering.sort_labels(

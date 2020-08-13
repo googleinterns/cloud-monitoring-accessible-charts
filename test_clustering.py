@@ -196,7 +196,7 @@ class TestClusteringMethods(unittest.TestCase):
         ts_cluster_labels = np.array([1, 1, 2, 2])
         cluster_centers = np.array([[0.5, 8.5, 9, 6.5], [3.5, 3.5, 3.5, 3]])
         old = np.copy(ts_cluster_labels)
-        clustering.outliers(data, ts_cluster_labels, cluster_centers, "")
+        clustering.outliers_kmeans(data, ts_cluster_labels, cluster_centers)
         self.assertEqual(ts_cluster_labels.tolist(), old.tolist())
 
     def test_outliers_update_clusters(self):
@@ -206,7 +206,7 @@ class TestClusteringMethods(unittest.TestCase):
         ts_cluster_labels = np.array([1, 1, 2, 2])
         cluster_centers = np.array([[0.5, 0, 9, 2], [3.5, 3.5, 3.5, 3]])
         solution = np.array([-1, -1, 2, 2])
-        clustering.outliers(data, ts_cluster_labels, cluster_centers, "")
+        clustering.outliers_kmeans(data, ts_cluster_labels, cluster_centers)
         self.assertEqual(ts_cluster_labels.tolist(), solution.tolist())
 
 if __name__ == '__main__':
