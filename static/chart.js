@@ -38,11 +38,15 @@ const drawChart = async () => {
   const chartId = "002";
   try {
     const response = await callFetch("data/" + chartId);
-
+    const allZones = new Set();
     if (response.status >= 200 && response.status <= 299) {
       const data = await response.json();
       const formattedData = data.timeSeries.map((timeSeries) => {
-        return formatPoints(timeSeries.points);
+        const zone = timeSeries["resource"]["labels"]["zone"];
+        allZones.add(zone);
+        const points = formatPoints(timeSeries.points);
+        points.push(zone);
+        return points;
       });
 
       const margin = {left: 40, right: 20, top: 30, bottom: 40};
@@ -89,9 +93,9 @@ const drawChart = async () => {
             ).attr("transform",
                 "translate(" + margin.left + ", " + margin.top + ")")
             .attr("id", "id"+index)
-            .attr("class", "timeSeries cluster-All");
+            .attr("class", "timeSeries " + elt[2] + " cluster-All");
       });
-      selectors(chartId, colorScale);
+      selectors(chartId, colorScale, Array.from(allZones).sort());
     } else {
       const error = await response.json();
       showError(response.status + ". " + error.error.message );
