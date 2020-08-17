@@ -8,6 +8,9 @@ from sklearn.metrics import pairwise_distances, pairwise_distances_argmin_min
 from scipy.spatial import distance
 import count
 
+# These params where determined by runing tuning_k and tuning_eps.
+params = {"kmeans_ratio": 20, "kmeans_min": 6, "dbscan_eps": 1.2}
+
 def time_series_array(data):
     """Converts the time series data to an np array.
 
@@ -169,8 +172,8 @@ def kmeans(data):
         labels are integers.
     """
     data = scale(data)
-    tuning_ratio, tuning_min_clusters = len(data) // 20, 6
-    kmeans_result = KMeans(n_clusters=tuning_ratio + tuning_min_clusters,
+    tuning_ratio = len(data) // params["kmeans_ratio"]
+    kmeans_result = KMeans(n_clusters=tuning_ratio + params["kmeans_min"],
                            random_state=0).fit(data)
     return kmeans_result.labels_
 
@@ -187,7 +190,8 @@ def dbscan(data):
     """
     min_max_scaler = MinMaxScaler()
     min_max_scaled = min_max_scaler.fit_transform(data)
-    dbscan_result = DBSCAN(eps=1.2, min_samples=1).fit(min_max_scaled)
+    dbscan_result = DBSCAN(eps=params["dbscan_eps"], min_samples=1).fit(
+        min_max_scaled)
     return dbscan_result.labels_
 
 def cluster_to_labels(cluster_labels, resource_to_label):
@@ -263,10 +267,10 @@ def kmeans_constrained(data, label_dict, ts_to_labels):
         series was placed in.
     """
     must_link, can_not_link = make_constraints(ts_to_labels)
-    num_clusters = (len(data) // 20) + 6
+    num_clusters = (len(data) // params["kmeans_ratio"]) + params["kmeans_min"]
     clusters_distances = []
 
-    for run_num in range(5):
+    for run_num in range(10):
         centroids = k_means_init(data, num_clusters, run_num)
 
         while True:
@@ -293,7 +297,9 @@ def kmeans_constrained(data, label_dict, ts_to_labels):
     return np.array(clusters_distances[0][1])
 
 def update_clusters(data, centroids, must_link, can_not_link):
-    """Updates the cluster assignments based on the centroids.
+    """Updates the cluster assignments based on the centroids and the
+    must_link and can_not_link constraints. Assigns each time series
+    to the closest centroid which does not violate the constraints.
 
     Args:
         data: An np array where each row is a time series and each
@@ -308,11 +314,11 @@ def update_clusters(data, centroids, must_link, can_not_link):
         ts_to_cluster: A dictionary mapping each time series to its
             cluster assignment.
     """
-    distances = pairwise_distances(data, centroids)
+    distances_ts_to_cluster = pairwise_distances(data, centroids)
     clusters = [[] for i in range(len(centroids))]
     ts_to_cluster = {}
 
-    for ts_index, dist in enumerate(distances):
+    for ts_index, dist in enumerate(distances_ts_to_cluster):
         options = np.argsort(dist)
         for option in options:
             invalid = violates_cons(option, ts_index, ts_to_cluster,
@@ -337,17 +343,14 @@ def update_centroids(data, clusters, centroids):
         True if the centroids were updated without an error, False
         otherwise.
     """
-    valid_clusters = True
     for cluster_ind, _ in enumerate(centroids):
         if len(clusters[cluster_ind]) == 0:
-            valid_clusters = False
-            break
-        if valid_clusters:
-            total = np.zeros((centroids.shape[1]))
-            for ts_index in clusters[cluster_ind]:
-                total += data[ts_index]
-            centroids[cluster_ind] = total / len(clusters[cluster_ind])
-    return valid_clusters
+            return False
+        total = np.zeros((centroids.shape[1]))
+        for ts_index in clusters[cluster_ind]:
+            total += data[ts_index]
+        centroids[cluster_ind] = total / len(clusters[cluster_ind])
+    return True
 
 def k_means_init(data, num_clusters, run_num):
     """Runs k-means++ initialization which aims to spread out the
@@ -375,14 +378,14 @@ def k_means_init(data, num_clusters, run_num):
         centroids = np.append(centroids, [data[picked]], axis=0)
     return centroids
 
-def violates_cons(option, ts_index, ts_to_cluster, must_link, can_not_link):
-    """Checks if any constraint is violated by placing ts_index in the
+def violates_cons(option, ts_1, ts_to_cluster, must_link, can_not_link):
+    """Checks if any constraint is violated by placing ts_1 in the
     cluster option.
 
     Args:
-        option: The index of the cluster where the time series ts_index
+        option: The index of the cluster where the time series ts_1
             may be placed.
-        ts_index: The index of the time series.
+        ts_1: The time series being placed.
         ts_to_cluster: A dictionary where each key is a time series
             index and each value is the index of the cluster the time
             series is assigned to.
@@ -396,12 +399,12 @@ def violates_cons(option, ts_index, ts_to_cluster, must_link, can_not_link):
     Returns:
         True if a constraint was violated and False otherwise.
     """
-    if ts_index in must_link:
-        for ts_2 in must_link[ts_index]:
+    if ts_1 in must_link:
+        for ts_2 in must_link[ts_1]:
             if ts_2 in ts_to_cluster and ts_to_cluster[ts_2] != option:
                 return True
-    if ts_index in can_not_link:
-        for ts_2 in can_not_link[ts_index]:
+    if ts_1 in can_not_link:
+        for ts_2 in can_not_link[ts_1]:
             if ts_2 in ts_to_cluster and ts_to_cluster[ts_2] == option:
                 return True
     return False
