@@ -50,11 +50,12 @@ def cluster(algorithm, similarity, label_encoding, chart_id):
     time_series_data, label_dict, ts_to_labels = clustering.time_series_array(
         data)
     time_series_data = clustering.preprocess(time_series_data, label_encoding,
-                                             similarity, ts_to_labels)
+                                             similarity, ts_to_labels,
+                                             algorithm)
     if algorithm == "k-means":
         labels = clustering.kmeans(time_series_data)
     else:
-        labels = clustering.dbscan(time_series_data)
+        labels = clustering.dbscan(time_series_data, similarity, label_encoding)
     return str(labels.tolist())
 
 @app.route("/frequency/<similarity>/<label_encoding>/<chart_id>")
@@ -82,7 +83,8 @@ def frequency(similarity, label_encoding, chart_id):
     time_series_data, label_dict, ts_to_labels = clustering.time_series_array(
         data)
     time_series_data = clustering.preprocess(time_series_data, label_encoding,
-                                             similarity, ts_to_labels)
+                                             similarity, ts_to_labels,
+                                             "k-means")
     labels = clustering.kmeans(time_series_data)
     cluster_labels = clustering.cluster_to_labels(labels, ts_to_labels)
 
@@ -114,7 +116,8 @@ def tune_parameters(algorithm, similarity, label_encoding, chart_id):
     time_series_data, _, ts_to_labels = clustering.time_series_array(
         data)
     time_series_data = clustering.preprocess(time_series_data, label_encoding,
-                                             similarity, ts_to_labels)
+                                             similarity, ts_to_labels,
+                                             algorithm)
     if algorithm == "k-means":
         distances = clustering.tuning_k(time_series_data)
     else:

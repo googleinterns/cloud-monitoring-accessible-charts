@@ -5,7 +5,10 @@
  * @param {string} encoding The encoding for the labels.
  */
 const tuning = async (mode, similarity, encoding) => {
-  const chartIds = ["001", "002", "004", "005"];
+  const chartIds = ["002"];
+  const xLabel = {"dbscan": "time series", "k-means": "k"};
+  const yLabel = {"dbscan": "distance to nearest neighbor", "k-means":
+    "sum of squared distances"};
 
   for (let index = 0; index < chartIds.length; index++) {
     try {
@@ -18,12 +21,14 @@ const tuning = async (mode, similarity, encoding) => {
       d3.select("body")
           .append("div")
           .attr("style", "width:300px;height:300px")
-          .attr("id", "tuningChart" + chartIds[index]);
+          .attr("id", "tuningChart" + chartIds[index] + similarity);
 
-      const chart = document.getElementById('tuningChart' + chartIds[index]);
+      const chart = document.getElementById('tuningChart' + chartIds[index] +
+      similarity);
 
       Plotly.newPlot(chart, [{x: points, y: distances}],
-          {margin: {t: 20, l: 50, b: 50, r: 20}});
+          {margin: {t: 30, l: 50, b: 80, r: 20}, title: mode + "-" + similarity,
+            xaxis: {title: xLabel[mode]}, yaxis: {title: yLabel[mode]}});
     } catch (error) {
       showError(error);
     }
