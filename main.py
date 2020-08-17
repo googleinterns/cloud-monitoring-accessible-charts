@@ -40,6 +40,9 @@ def cluster(algorithm, similarity, label_encoding, chart_id, key=None):
             be "None" or "One-Hot".
         chart_id: The id of the file containing the data that k-means
             clustering is run on.
+        key: The key for the time series labels that are saved. If None,
+            then all label values may be kept, otherwise only label
+            values with that key are kept.
 
     Returns:
         A string of the list containing the label of the cluster each

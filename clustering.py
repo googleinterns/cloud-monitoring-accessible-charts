@@ -11,6 +11,9 @@ def time_series_array(data, key):
 
     Args:
         data: A timeSeries object.
+        key: The key for the time series labels that are saved. If None,
+            then all label values may be kept, otherwise only label
+            values with that key are kept.
 
     Returns:
         An np array where each row represents a resource and each column

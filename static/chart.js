@@ -79,8 +79,8 @@ const drawChart = async () => {
 
       const colorScale = d3.scaleOrdinal(d3.schemeCategory10);
 
-      formattedData.forEach((elt, index) => {
-        const zipped = elt[0].map((val, i) => [val, elt[1][i]]);
+      formattedData.forEach(([values, dates, zone], index) => {
+        const zipped = values.map((val, i) => [val, dates[i]]);
 
         svg.append("path")
             .datum(zipped)
@@ -93,7 +93,7 @@ const drawChart = async () => {
             ).attr("transform",
                 "translate(" + margin.left + ", " + margin.top + ")")
             .attr("id", "id"+index)
-            .attr("class", "timeSeries " + elt[2] + " cluster-All");
+            .attr("class", "timeSeries " + zone + " cluster-All");
       });
       selectors(chartId, colorScale, Array.from(allZones).sort());
     } else {

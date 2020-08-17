@@ -26,6 +26,9 @@ def count_labels(ts_labels, label_count, key):
             is the label value.
         label_count: Dictionary where each key is a label and each
             value is the number of times the label appears in the data.
+        key: The key for the time series labels that are saved. If None,
+            then all label values may be kept, otherwise only label
+            values with that key are kept.
     """
     for label in ts_labels:
         if not key or key and key == label:

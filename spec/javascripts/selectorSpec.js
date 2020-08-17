@@ -52,8 +52,11 @@ describe("Suite for selector", function() {
 
     clusters = ["All", 0, 1];
     updateFilter();
+
+    // The value should be All because All is one of the options for
+    // clusterSelector and updateFilter() sets its to All.
     expect(d3.select("#clusterSelector").property("value")).toEqual("All");
-    d3.selectAll("#clusterSelector").selectAll("option").each( (elt, i) => {
+    d3.selectAll("#clusterSelector").selectAll("option").each((elt, i) => {
       expect(elt).toEqual(clusters[i]);
     });
   });
