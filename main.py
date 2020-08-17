@@ -44,7 +44,6 @@ def cluster(algorithm, similarity, label_encoding, chart_id):
         A string of the list containing the label of the cluster each
         time series was grouped in.
     """
-    print(label_encoding)
     data = load_data(chart_id)
     if "timeSeries" not in data:
         return data
