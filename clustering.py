@@ -194,6 +194,31 @@ def dbscan(data, outlier):
     min_max_scaled = min_max_scaler.fit_transform(data)
     dbscan_result = DBSCAN(eps=1.2, min_samples=2).fit(min_max_scaled)
     cluster_assignment = np.copy(dbscan_result.labels_)
+    medians = cluster_medians(data, cluster_assignment)
+
+    outlier_indexes = np.where(cluster_assignment == -1)[0]
+    cluster_assignment += 1
+    closest = pairwise_distances_argmin(data[outlier_indexes, :], medians)
+
+    for index, index_ts in enumerate(outlier_indexes):
+        if outlier == "on":
+            cluster_assignment[index_ts] = - (closest[index] + 1)
+        else:
+            cluster_assignment[index_ts] = closest[index] + 1
+    return cluster_assignment
+
+def cluster_medians(data, cluster_assignment):
+    """Calculates the cluster medians based on the cluster_assignment.
+
+    Args:
+        data: Array where each row is a time series and each column is
+            a date.
+        cluster_assignment: An array of cluster labels where the nth
+        element is the cluster the nth time series was placed in.
+
+    Returns:
+        An array where the nth element is the median of the nth cluster.
+    """
     clusters = {}
 
     for index in np.where(cluster_assignment >= 0)[0]:
@@ -202,18 +227,8 @@ def dbscan(data, outlier):
             clusters[label] = [data[index]]
         else:
             clusters[label] = np.append(clusters[label], [data[index]], axis=0)
-
-    centers = np.array([np.median(clusters[ind], axis=0) for ind in clusters])
-    outlier_indexes = np.where(cluster_assignment == -1)[0]
-    cluster_assignment += 1
-    closest = pairwise_distances_argmin(data[outlier_indexes, :], centers)
-
-    for index, index_ts in enumerate(outlier_indexes):
-        if outlier == "on":
-            cluster_assignment[index_ts] = - (closest[index] + 1)
-        else:
-            cluster_assignment[index_ts] = closest[index] + 1
-    return cluster_assignment
+    medians = [np.median(clusters[i], axis=0) for i in range(len(clusters))]
+    return np.array(medians)
 
 def cluster_to_labels(cluster_labels, resource_to_label):
     """Returns a list of the percentage of elements in a cluster that
