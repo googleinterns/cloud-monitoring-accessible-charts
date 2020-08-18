@@ -210,7 +210,7 @@ def dbscan(data, outlier):
     min_max_scaled = min_max_scaler.fit_transform(data)
     dbscan_result = DBSCAN(eps=DBSCAN_EPS, min_samples=2).fit(min_max_scaled)
     cluster_assignment = np.copy(dbscan_result.labels_)
-    medians = cluster_medians(data, cluster_assignment)
+    medians, _ = cluster_medians(data, cluster_assignment)
 
     outlier_indexes = np.where(cluster_assignment == -1)[0]
     cluster_assignment += 1
@@ -233,8 +233,10 @@ def cluster_medians(data, cluster_assignment):
         element is the cluster the nth time series was placed in.
 
     Returns:
-        An array where the nth element is the median of the nth cluster.
-    """
+        A tuple (cluster_median, valid) where median is an array where
+        the nth element is the median of the nth cluster if valid==True,
+        meaning there was a valid assignment, otherwise returns an empty
+        list and False.    """
     clusters = {}
 
     for index in np.where(cluster_assignment >= 0)[0]:
@@ -243,8 +245,12 @@ def cluster_medians(data, cluster_assignment):
             clusters[label] = [data[index]]
         else:
             clusters[label] = np.append(clusters[label], [data[index]], axis=0)
-    medians = [np.median(clusters[i], axis=0) for i in range(len(clusters))]
-    return np.array(medians)
+    medians = []
+    for i in range(len(clusters)):
+        if i not in clusters:
+            return [], False
+        medians.append(np.median(clusters[i], axis=0))
+    return np.array(medians), True
 
 def cluster_to_labels(cluster_labels, resource_to_label):
     """Returns a list of the percentage of elements in a cluster that
@@ -321,8 +327,9 @@ def outliers_kmeans(data, ts_cluster_labels, cluster_centers):
         if euc_dist > 6.75:
             ts_cluster_labels[index] = -label
 
-def kmeans_constrained(data, label_dict, ts_to_labels, outlier):
-    """Runs k-means with constraints and uses k-means++ initialization.
+def kmeans_kmedians(data, label_dict, ts_to_labels, algorithm, outlier):
+    """Runs k-means with constraints or k-medians based on algorithm.
+    Uses a k-means++ initialization.
 
     Args:
         data: An np array where each row is a time series and each
@@ -331,13 +338,16 @@ def kmeans_constrained(data, label_dict, ts_to_labels, outlier):
             values are the indexes of the labels in data.
         ts_to_labels: An array where each row is a timeSeries and each
             column is a label.
+        algorithm: The algorithm run on data, must be k-means or k-medians.
         outlier: Indicates whether outliers are labeled as outliers.
 
     Returns:
         An np array where the ith element is the cluster the ith time
         series was placed in.
     """
-    must_link, can_not_link = make_constraints(ts_to_labels)
+    must_link, can_not_link = {}, {}
+    if algorithm == "k-means-constrained":
+        must_link, can_not_link = make_constraints(ts_to_labels)
     num_clusters = (len(data) // KMEANS_RATIO) + KMEANS_MIN
     clusters_distances = []
 
@@ -349,8 +359,12 @@ def kmeans_constrained(data, label_dict, ts_to_labels, outlier):
 
             clusters, ts_to_cluster = update_clusters(data, centroids,
                                                       must_link, can_not_link)
-            valid_clusters = update_centroids(data, clusters, centroids)
-
+            if algorithm == "k-means-constrained":
+                valid_clusters = update_centroids(data, clusters, centroids)
+            if algorithm == "k-medians":
+                ts_cluster_ar = np.array([v for k, v in sorted(
+                    ts_to_cluster.items(), key=lambda item: item[0])])
+                centroids, valid_clusters = cluster_medians(data, ts_cluster_ar)
             if not valid_clusters:
                 break
 
@@ -365,7 +379,7 @@ def kmeans_constrained(data, label_dict, ts_to_labels, outlier):
                 break
 
     clusters_distances.sort()
-    result =  np.array(clusters_distances[0][1]) + 1
+    result = np.array(clusters_distances[0][1]) + 1
     if outlier == "on":
         outliers_kmeans(data, result, clusters_distances[0][2])
     return result

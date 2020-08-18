@@ -58,9 +58,10 @@ def cluster(algorithm, similarity, encoding, outlier, chart_id, key=None):
                                              similarity, ts_to_labels)
     if algorithm == "k-means":
         labels = clustering.kmeans(time_series_data, outlier).tolist()
-    elif algorithm == "k-means-constrained":
-        labels = clustering.kmeans_constrained(time_series_data, label_dict,
-                                               ts_to_labels, outlier).tolist()
+    elif algorithm == "k-means-constrained" or algorithm == "k-medians":
+        labels = clustering.kmeans_kmedians(time_series_data, label_dict,
+                                            ts_to_labels, algorithm,
+                                            outlier).tolist()
     elif algorithm == "zone":
         labels = clustering.cluster_zone(label_dict, ts_to_labels)
     else:
@@ -97,8 +98,8 @@ def frequency(similarity, algorithm, label_encoding, chart_id):
     if algorithm == "k-means":
         labels = clustering.kmeans(time_series_data, "off")
     elif algorithm == "k-means-constrained":
-        labels = clustering.kmeans_constrained(time_series_data, label_dict,
-                                               ts_to_labels)
+        labels = clustering.kmeans_kmedians(time_series_data, label_dict,
+                                            ts_to_labels, algorithm, "off")
 
     cluster_labels = clustering.cluster_to_labels(labels, ts_to_labels)
 
