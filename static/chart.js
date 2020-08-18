@@ -91,25 +91,42 @@ const drawChart = async () => {
             .on("mouseover", function() {
               const cluster = d3.select("select#clusterSelector")
                   .property("value");
+              const classes = d3.select(this).attr("class").split(" ");
+              let currentCluster = classes[classes.length-1];
+              const dashIndex = currentCluster.lastIndexOf("-") + 1;
+              currentCluster = currentCluster.slice(dashIndex);
+
               if (cluster == "All") {
                 d3.select(this)
                     .attr("stroke-width", 3);
-                const classes = d3.select(this).attr("class").split(" ");
-                const currentClass = classes[classes.length-1];
                 d3.selectAll(".timeSeries")
                     .attr("opacity", 0.2);
-                d3.selectAll("." + currentClass)
+                d3.selectAll(".cluster-" + currentCluster)
                     .attr("opacity", 1);
+                d3.selectAll(".cluster--" + currentCluster)
+                    .attr("opacity", 1);
+              } else if (currentCluster == cluster || -currentCluster ==
+                         cluster) {
+                d3.select(this)
+                    .attr("stroke-width", 3);
               }
             })
             .on("mouseout", function() {
               const cluster = d3.select("select#clusterSelector")
                   .property("value");
+              const classes = d3.select(this).attr("class").split(" ");
+              let currentCluster = classes[classes.length-1];
+              const dashIndex = currentCluster.lastIndexOf("-") + 1;
+              currentCluster = currentCluster.slice(dashIndex);
               if (cluster == "All") {
                 d3.select(this)
                     .attr("stroke-width", 1);
                 d3.selectAll(".timeSeries")
                     .attr("opacity", 1);
+              } else if (currentCluster == cluster || -currentCluster ==
+                      cluster) {
+                d3.select(this)
+                    .attr("stroke-width", 1);
               }
             })
             .attr("id", "id"+index)
