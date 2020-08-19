@@ -17,7 +17,7 @@ class TestClusteringMethods(unittest.TestCase):
             data = json.load(json_file)
 
         np_data, label_dict, instance_labels = clustering.time_series_array(
-            data)
+            data, None)
         solution = [[0, 10],
                     [0, 10],
                     [0, 10],
@@ -32,7 +32,7 @@ class TestClusteringMethods(unittest.TestCase):
         with open('./data/chart-101.json', "r") as json_file:
             data = json.load(json_file)
         np_data, label_dict, instance_labels = clustering.time_series_array(
-            data)
+            data, None)
         solution = [[0, -1],
                     [0, 10],
                     [0, 10],
@@ -47,7 +47,7 @@ class TestClusteringMethods(unittest.TestCase):
         with open('./data/chart-101.json', "r") as json_file:
             data = json.load(json_file)
         np_data, label_dict, instance_labels = clustering.time_series_array(
-            data)
+            data, None)
         result = clustering.preprocess(np_data, "one-hot", "correlation",
                                        instance_labels)
         solution = [[1, 0, 0],
@@ -293,6 +293,23 @@ class TestClusteringMethods(unittest.TestCase):
         result_assignment = {0: 0, 1: 0, 2: 0, 3: 1}
         self.assertEqual(clusters, result_clusters)
         self.assertEqual(ts_cluster, result_assignment)
+    def test_cluster_zone(self):
+        """Should assign time series to the label which they have,
+        according to ts_to_labels."""
+        label_dict = {"north": 0,
+                      "south": 1,
+                      "west": 2,
+                      "east": 3}
+        ts_to_labels = np.zeros((5, 4))
+        ts_to_labels[0][1] = 1
+        ts_to_labels[1][2] = 1
+        ts_to_labels[2][0] = 1
+        ts_to_labels[3][2] = 1
+        ts_to_labels[4][3] = 1
+
+        result = clustering.cluster_zone(label_dict, ts_to_labels)
+        solution = ["south", "west", "north", "west", "east"]
+        self.assertEqual(result, solution)
 
 if __name__ == '__main__':
     unittest.main()

@@ -8,14 +8,23 @@ from sklearn.metrics import pairwise_distances, pairwise_distances_argmin_min
 from scipy.spatial import distance
 import count
 
-# These params where determined by runing tuning_k and tuning_eps.
-params = {"kmeans_ratio": 20, "kmeans_min": 6, "dbscan_eps": 1.2}
+# These params where determined by testing various k, eps produced by running
+# tuning_k and tuning_eps respectively, and picking the parameters that were at
+# the curve for their respective functions and produced reasonable clusters.
+KMEANS_RATIO = 20
+KMEANS_MIN = 6
+DBSCAN_EPS = 1.2
+# It is common to reinitialize the centroids for k-means 10 times.
+NUM_RUNS = 10
 
-def time_series_array(data):
+def time_series_array(data, key):
     """Converts the time series data to an np array.
 
     Args:
         data: A timeSeries object.
+        key: The key for the time series labels that are saved. If None,
+            then all label values may be kept, otherwise only label
+            values with that key are kept.
 
     Returns:
         An np array where each row represents a resource and each column
@@ -25,10 +34,13 @@ def time_series_array(data):
     """
     first_val = data["timeSeries"][0]["points"][0]["value"]["doubleValue"]
     date_to_index, label_to_count, min_max = {}, {}, [first_val, first_val]
-    count.get_dates_labels(data, date_to_index, label_to_count, min_max)
-
-    labels = list(filter(lambda k: label_to_count[k] > 2 and label_to_count[k]
-                         < len(data["timeSeries"]), label_to_count.keys()))
+    count.get_dates_labels(data, date_to_index, label_to_count, min_max, key)
+    if not key:
+        labels = list(filter(lambda k: label_to_count[k] >= 2 and
+                             label_to_count[k] < len(data["timeSeries"]),
+                             label_to_count.keys()))
+    else:
+        labels = list(label_to_count.keys())
     label_to_index = dict(zip(labels, range(len(labels))))
     num_instances = len(data["timeSeries"])
     num_times = len(date_to_index)
@@ -172,8 +184,8 @@ def kmeans(data):
         labels are integers.
     """
     data = scale(data)
-    tuning_ratio = len(data) // params["kmeans_ratio"]
-    kmeans_result = KMeans(n_clusters=tuning_ratio + params["kmeans_min"],
+    tuning_ratio = len(data) // KMEANS_RATIO
+    kmeans_result = KMeans(n_clusters=tuning_ratio + KMEANS_MIN,
                            random_state=0).fit(data)
     return kmeans_result.labels_
 
@@ -190,7 +202,7 @@ def dbscan(data):
     """
     min_max_scaler = MinMaxScaler()
     min_max_scaled = min_max_scaler.fit_transform(data)
-    dbscan_result = DBSCAN(eps=params["dbscan_eps"], min_samples=1).fit(
+    dbscan_result = DBSCAN(eps=DBSCAN_EPS, min_samples=1).fit(
         min_max_scaled)
     return dbscan_result.labels_
 
@@ -267,10 +279,10 @@ def kmeans_constrained(data, label_dict, ts_to_labels):
         series was placed in.
     """
     must_link, can_not_link = make_constraints(ts_to_labels)
-    num_clusters = (len(data) // params["kmeans_ratio"]) + params["kmeans_min"]
+    num_clusters = (len(data) // KMEANS_RATIO) + KMEANS_MIN
     clusters_distances = []
 
-    for run_num in range(10):
+    for run_num in range(NUM_RUNS):
         centroids = k_means_init(data, num_clusters, run_num)
 
         while True:
@@ -466,3 +478,23 @@ def add_link(index_1, index_2, link_dict):
         link_dict[index_1] = [index_2]
     if index_2 not in link_dict:
         link_dict[index_2] = [index_1]
+
+def cluster_zone(label_dict, ts_to_labels):
+    """Clusters the time series based on their zone label.
+
+    Args:
+        label_dict: A dictionary where each key is a system label and
+            each value is the index of the label (column) in
+            ts_to_labels. All keys are zone keys.
+        ts_to_labels: An array where each row is a time series and each
+            column is a label.
+
+    Returns:
+        A list where the ith entry is the name of the cluster the ith
+        time series was placed in."""
+    index_to_label = dict((v, k) for k, v in label_dict.items())
+    labels = [0] * ts_to_labels.shape[0]
+    zone_label = np.argwhere(ts_to_labels)
+    for ts_index, zone_index in zone_label:
+        labels[ts_index] = index_to_label[zone_index]
+    return labels
