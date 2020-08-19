@@ -189,6 +189,110 @@ class TestClusteringMethods(unittest.TestCase):
                     [0, 0, 0]]
         self.assertEqual(result.tolist(), solution)
 
+    def test_add_link_add_index(self):
+        """Should add indexes if not in link_dict."""
+        must_link = {1: [2, 3], 3: [4, 5], 5: [1, 2]}
+        index_1, index_2 = 10, 3
+        clustering.add_link(index_1, index_2, must_link)
+        solution = {1: [2, 3], 3: [4, 5, 10], 5: [1, 2], 10: [3]}
+        self.assertEqual(must_link, solution)
+
+    def test_violates_cons_empty(self):
+        """Should return False if there are no constraints."""
+        option, ts_index = 2, 3
+        ts_to_cluster = must_link = can_not_link = {}
+        result = clustering.violates_cons(option, ts_index, ts_to_cluster,
+                                          must_link, can_not_link)
+        self.assertEqual(False, result)
+
+    def test_violates_cons_false(self):
+        """Should return False if must_link matches the option."""
+        option, ts_index = 2, 3
+        ts_to_cluster = {2: 2}
+        must_link = {3: [2], 2: [3]}
+        can_not_link = {}
+        result = clustering.violates_cons(option, ts_index, ts_to_cluster,
+                                          must_link, can_not_link)
+        self.assertEqual(False, result)
+
+    def test_violates_cons_multiple_false(self):
+        """Should return False if there is no constraint violated."""
+        option, ts_index = 2, 3
+        ts_to_cluster = {2: 2}
+        must_link = {3: [2], 2: [3]}
+        can_not_link = {3: [4, 5], 4: [5, 9], 5: [3, 4], 9: [4]}
+        result = clustering.violates_cons(option, ts_index, ts_to_cluster,
+                                          must_link, can_not_link)
+        self.assertEqual(False, result)
+
+    def test_violates_cons_must_true(self):
+        """Should return true if a must link constraint is violated."""
+        option, ts_index = 2, 3
+        ts_to_cluster = {2: 9}
+        must_link = {3: [2], 2: [3]}
+        can_not_link = {3: [4, 5], 4: [5, 9], 5: [3, 4], 9: [4]}
+        result = clustering.violates_cons(option, ts_index, ts_to_cluster,
+                                          must_link, can_not_link)
+        self.assertEqual(True, result)
+
+    def test_violates_cons_cannot_true(self):
+        """Should return true if a cannot link constraint is violated."""
+        option, ts_index = 2, 3
+        ts_to_cluster = {9: 2}
+        must_link = {3: [2], 2: [3]}
+        can_not_link = {3: [9], 9:[3]}
+        result = clustering.violates_cons(option, ts_index, ts_to_cluster,
+                                          must_link, can_not_link)
+        self.assertEqual(True, result)
+
+    def test_update_centroids_one_elt(self):
+        """Should update the centroids to equal the data elements."""
+        data = [[1, 1, 0],
+                [1, 1, 1],
+                [1, 1, 1],
+                [0, 1, 1]]
+        clusters = [[0], [3]]
+        centroids = np.array([[1, 1, 0], [0, 0, 0]])
+        valid = clustering.update_centroids(np.array(data), clusters, centroids)
+        result = [[1, 1, 0], [0, 1, 1]]
+        self.assertEqual(centroids.tolist(), result)
+        self.assertEqual(True, valid)
+
+    def test_update_centroids_false(self):
+        """Should return False because one cluster is empty."""
+        data = [[1, 1, 0], [0, 0, 0]]
+        clusters = [[0], []]
+        centroids = np.array([[1, 1, 0], [0, 0, 0]])
+        valid = clustering.update_centroids(np.array(data), clusters, centroids)
+        self.assertEqual(False, valid)
+
+    def test_update_centroids_multiple(self):
+        """Should update centroids to equal the mean."""
+        data = [[1, 1, 0],
+                [1, 1, 1],
+                [0, 1, 1],
+                [2, 3, 4]]
+        clusters = [[0, 1], [2, 3]]
+        centroids = np.array([[1.0, 1.0, 0.0], [0.0, 0.0, 0.0]])
+        valid = clustering.update_centroids(np.array(data), clusters, centroids)
+        result = [[1, 1, 1/2], [1, 2, 2.5]]
+        self.assertEqual(centroids.tolist(), result)
+        self.assertEqual(True, valid)
+
+    def test_update_clusters(self):
+        """Should update cluster assignment."""
+        data = [[1, 1, 0],
+                [1, 1, 1],
+                [0, 1, 1],
+                [2, 3, 4]]
+        clusters = [[0, 1], [2, 3]]
+        centroids = np.array([[1.0, 1.0, 0.0], [5.0, 2.0, 3.0]])
+        clusters, ts_cluster = clustering.update_clusters(data, centroids,
+                                                          {}, {})
+        result_clusters = [[0, 1, 2], [3]]
+        result_assignment = {0: 0, 1: 0, 2: 0, 3: 1}
+        self.assertEqual(clusters, result_clusters)
+        self.assertEqual(ts_cluster, result_assignment)
     def test_cluster_zone(self):
         """Should assign time series to the label which they have,
         according to ts_to_labels."""

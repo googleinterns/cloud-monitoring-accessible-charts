@@ -2,13 +2,14 @@
  * Fetches the frequency data for the selected chart and plots the data in a
  * heatmap.
  * @param {string} chartId The id of the data being fetched and drawn.
+ * @param {string} algorithm The algorithm run on the data.
  * @param {string} similarity The similairty measure used for clustering.
  * @param {string} labelEncoding The encoding for the labels.
  */
-const frequency = async (chartId, similarity, labelEncoding) => {
+const frequency = async (chartId, algorithm, similarity, labelEncoding) => {
   try {
-    const res = await callFetch("frequency/" + similarity + "/" +
-      labelEncoding + "/" + chartId);
+    const res = await callFetch("frequency/" + algorithm + "/" + similarity +
+      "/" + labelEncoding + "/" + chartId);
     const frequencies = await res.json();
 
     const tsLabels = frequencies.ts_labels.map((elt, index) => index);
@@ -17,15 +18,17 @@ const frequency = async (chartId, similarity, labelEncoding) => {
     d3.select("body")
         .append("div")
         .attr("style", "width:1000px;height:400px")
-        .attr("id", "freqChart" + chartId + similarity + labelEncoding);
+        .attr("id", "freqChart" + chartId + algorithm + similarity +
+          labelEncoding);
     d3.select("body")
         .append("div")
         .attr("style", "width:1600px;height:400px")
-        .attr("id", "freqChart2" + chartId + similarity + labelEncoding);
+        .attr("id", "freqChart2" + chartId + algorithm + similarity +
+          labelEncoding);
 
-    const chart = document.getElementById("freqChart" + chartId +
+    const chart = document.getElementById("freqChart" + chartId + algorithm +
         similarity + labelEncoding);
-    const chart2 = document.getElementById("freqChart2" + chartId +
+    const chart2 = document.getElementById("freqChart2" + chartId + algorithm +
       similarity + labelEncoding);
 
     Plotly.newPlot(chart, [{y: tsLabels, x: frequencies.labels,
@@ -39,4 +42,5 @@ const frequency = async (chartId, similarity, labelEncoding) => {
   }
 };
 
-frequency("002", "correlation", "none");
+frequency("002", "k-means", "correlation", "none");
+frequency("002", "k-means-constrained", "correlation", "none");

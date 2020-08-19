@@ -7,7 +7,7 @@
  * @param {Set} zones A list of the unique zones for the chart.
  */
 const selectors = async (chartId, colorScale, zones) => {
-  const modes = ["Default", "K-means", "DBSCAN", "Zone"];
+  const modes = ["Default", "K-means", "DBSCAN", "K-means-constrained", "Zone"];
   const similarity = ["Correlation", "Proximity"];
   const encoding = ["None", "One-Hot"];
   clusters = ["All"];
