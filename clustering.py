@@ -6,11 +6,14 @@ from sklearn.preprocessing import MinMaxScaler, scale
 from sklearn.neighbors import NearestNeighbors
 import count
 
-def time_series_array(data):
+def time_series_array(data, key):
     """Converts the time series data to an np array.
 
     Args:
         data: A timeSeries object.
+        key: The key for the time series labels that are saved. If None,
+            then all label values may be kept, otherwise only label
+            values with that key are kept.
 
     Returns:
         An np array where each row represents a resource and each column
@@ -20,10 +23,13 @@ def time_series_array(data):
     """
     first_val = data["timeSeries"][0]["points"][0]["value"]["doubleValue"]
     date_to_index, label_to_count, min_max = {}, {}, [first_val, first_val]
-    count.get_dates_labels(data, date_to_index, label_to_count, min_max)
-
-    labels = list(filter(lambda k: label_to_count[k] > 2 and label_to_count[k]
-                         < len(data["timeSeries"]), label_to_count.keys()))
+    count.get_dates_labels(data, date_to_index, label_to_count, min_max, key)
+    if not key:
+        labels = list(filter(lambda k: label_to_count[k] >= 2 and
+                             label_to_count[k] < len(data["timeSeries"]),
+                             label_to_count.keys()))
+    else:
+        labels = list(label_to_count.keys())
     label_to_index = dict(zip(labels, range(len(labels))))
     num_instances = len(data["timeSeries"])
     num_times = len(date_to_index)
@@ -244,3 +250,23 @@ def sort_labels(label_dict, cluster_labels, ts_to_labels):
         ordered_labels[i] = system_labels[elt]
 
     return ordered_labels, ordered_cluster_labels, ordered_ts_labels
+
+def cluster_zone(label_dict, ts_to_labels):
+    """Clusters the time series based on their zone label.
+
+    Args:
+        label_dict: A dictionary where each key is a system label and
+            each value is the index of the label (column) in
+            ts_to_labels. All keys are zone keys.
+        ts_to_labels: An array where each row is a time series and each
+            column is a label.
+
+    Returns:
+        A list where the ith entry is the name of the cluster the ith
+        time series was placed in."""
+    index_to_label = dict((v, k) for k, v in label_dict.items())
+    labels = [0] * ts_to_labels.shape[0]
+    zone_label = np.argwhere(ts_to_labels)
+    for ts_index, zone_index in zone_label:
+        labels[ts_index] = index_to_label[zone_index]
+    return labels
