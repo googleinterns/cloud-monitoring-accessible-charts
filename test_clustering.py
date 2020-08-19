@@ -16,7 +16,7 @@ class TestClusteringMethods(unittest.TestCase):
         with open('./data/chart-100.json', "r") as json_file:
             data = json.load(json_file)
 
-        np_data, label_dict, instance_labels = clustering.time_series_array(
+        np_data, label_dict, instance_labels, _, _ = clustering.time_series_array(
             data, None)
         solution = [[0, 10],
                     [0, 10],
@@ -31,7 +31,7 @@ class TestClusteringMethods(unittest.TestCase):
         data with -1."""
         with open('./data/chart-101.json', "r") as json_file:
             data = json.load(json_file)
-        np_data, label_dict, instance_labels = clustering.time_series_array(
+        np_data, label_dict, instance_labels, _, _ = clustering.time_series_array(
             data, None)
         solution = [[0, -1],
                     [0, 10],
@@ -46,7 +46,7 @@ class TestClusteringMethods(unittest.TestCase):
         appended."""
         with open('./data/chart-101.json', "r") as json_file:
             data = json.load(json_file)
-        np_data, label_dict, instance_labels = clustering.time_series_array(
+        np_data, label_dict, instance_labels, _, _ = clustering.time_series_array(
             data, None)
         result = clustering.preprocess(np_data, "one-hot", "correlation",
                                        instance_labels)
@@ -108,18 +108,18 @@ class TestClusteringMethods(unittest.TestCase):
 
     def test_scale_to_range_ten_stay(self):
         """Should not change the value."""
-        result = clustering.scale_to_range_ten([0.0, 10.0], 7.0)
+        result = clustering.scale_to_range([0.0, 10.0], 7.0)
         self.assertEqual(result, 7)
 
     def test_scale_to_range_ten_down(self):
         """Should shift the value to fall in the range [0, 10]."""
-        result = clustering.scale_to_range_ten([5, 100], 9)
+        result = clustering.scale_to_range([5, 100], 9)
         value = ((4) * 10) / 95
         self.assertAlmostEqual(result, value)
 
     def test_scale_to_range_ten_up(self):
         """Should shift the value to fall in the range [0, 10]."""
-        result = clustering.scale_to_range_ten([-383.44, 7.93839], 1)
+        result = clustering.scale_to_range([-383.44, 7.93839], 1)
         value = ((1 - (-383.44)) * 10) / (7.93839 - (-383.44))
         self.assertAlmostEqual(result, value)
 
