@@ -77,8 +77,9 @@ const drawChart = async () => {
           .attr("transform",
               "translate(" + margin.left + ", " + margin.top + ")");
 
-      const colors = ["#D0192C", "#ee99bb", "#cc5588", "#9144BB", "#7e21ff",
-        "#2266ff", "#4593db", "#44dcb4", "#3DAF21", "#eaca58", "#e99958"];
+      const colors = ["#ee99bb", "#cc5588", "#9144BB", "#7e21ff",
+        "#2266ff", "#4593db", "#44dcb4", "#3DAF21", "#eaca58", "#e99958",
+        "#8A8883", "#994F14", "#123898"];
       const colorScale = d3.scaleOrdinal().range(colors);
       drawLines(svg, formattedData, colorScale, yScale, dateScale, margin);
       selectors(svg, formattedData, colorScale, yScale, dateScale, margin,
@@ -95,21 +96,22 @@ const drawChart = async () => {
 /**
  * Draws the time series as lines.
  * @param {svg} svg The svg used for plotting that chart.
- * @param {Array} formattedData An array where the first element represents the
- * time series value and the second element represents the corresponding date.
+ * @param {Array} formattedData An array where the ith element represents the
+ * time series value and corresponding date, for the ith timeSeries.
  * @param {function} colorScale A d3 colorscale used for the line colors.
  * @param {function} yScale The scale used to convert the time series values.
  * @param {function} dateScale The scale used to convert the time series dates.
  * @param {object} margin An object with the values for the chart margins.
  */
 function drawLines(svg, formattedData, colorScale, yScale, dateScale, margin) {
+  const currentRep = d3.select("select#repSelector").property("value");
   formattedData.forEach(([values, dates, zone], index) => {
     const zipped = values.map((val, i) => [val, dates[i]]);
 
     svg.append("path")
         .datum(zipped)
         .attr("fill", "none")
-        .attr("stroke", (d) => colorScale(d))
+        .attr("stroke", (d) => currentRep == "Bands" ? "#ff0000": colorScale(d))
         .attr("stroke-width", 1)
         .attr("d", d3.line()
             .y((d) => yScale(d[0]))
@@ -125,8 +127,10 @@ function drawLines(svg, formattedData, colorScale, yScale, dateScale, margin) {
           let currentCluster = classes[classes.length-1];
           const dashIndex = currentCluster.lastIndexOf("-") + 1;
           currentCluster = currentCluster.slice(dashIndex);
-
-          if (cluster == "All") {
+          if (currentRep == "Bands") {
+            d3.select(this)
+                .attr("stroke-width", 3);
+          } else if (cluster == "All") {
             d3.select(this)
                 .attr("stroke-width", 3);
             d3.selectAll(".timeSeries")
@@ -150,7 +154,10 @@ function drawLines(svg, formattedData, colorScale, yScale, dateScale, margin) {
           let currentCluster = classes[classes.length-1];
           const dashIndex = currentCluster.lastIndexOf("-") + 1;
           currentCluster = currentCluster.slice(dashIndex);
-          if (cluster == "All") {
+          if (currentRep == "Bands") {
+            d3.select(this)
+                .attr("stroke-width", 1);
+          } else if (cluster == "All") {
             d3.select(this)
                 .attr("stroke-width", 1);
             d3.selectAll(".timeSeries")
@@ -176,8 +183,11 @@ function drawLines(svg, formattedData, colorScale, yScale, dateScale, margin) {
  * @param {function} yScale The scale used to convert the time series values.
  * @param {function} dateScale The scale used to convert the time series dates.
  * @param {object} margin An object with the values for the chart margins.
+ * @param {Array} outlierLines An array where the ith element represents the
+ * time series value and corresponding date, for the ith timeSeries.
  */
-function drawBands(minMax, dates, svg, colorScale, yScale, dateScale, margin) {
+function drawBands(minMax, dates, svg, colorScale, yScale, dateScale, margin,
+    outlierLines) {
   minMax.forEach(([minTS, maxTS], index) => {
     const minLine = minTS.map((val, i) => [val, maxTS[i], new Date(dates[i])]);
     const area = d3.area()
@@ -193,6 +203,7 @@ function drawBands(minMax, dates, svg, colorScale, yScale, dateScale, margin) {
         .attr("transform", "translate(" + margin.left + ", " + margin.top + ")")
         .attr("class", "timeSeries cluster-All cluster-"+(index+1));
   });
+  drawLines(svg, outlierLines, colorScale, yScale, dateScale, margin);
 }
 
 chartMode = "lines";

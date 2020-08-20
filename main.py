@@ -68,14 +68,14 @@ def cluster(algorithm, similarity, encoding, outlier, rep, chart_id, key=None):
         labels = clustering.cluster_zone(label_dict, ts_to_labels)
     else:
         labels = clustering.dbscan(ts_data_updated, outlier).tolist()
-
-    min_max, ordered_dates = [], []
+    min_max, ordered_dates, outlier_indexes = [], [], []
     if rep == "bands":
-        min_max, ordered_dates = clustering.clusters_min_max(
-            time_series_data, labels, dates, old_range)
+        min_max, ordered_dates, outlier_indexes = clustering.clusters_min_max(
+            time_series_data, labels, dates, old_range, outlier)
     return  jsonify({"cluster_labels": labels,
                      "min_max": min_max,
-                     "dates": ordered_dates})
+                     "dates": ordered_dates,
+                     "outlier_indexes": outlier_indexes})
 
 @app.route("/frequency/<algorithm>/<similarity>/<label_encoding>/<chart_id>")
 def frequency(similarity, algorithm, label_encoding, chart_id):

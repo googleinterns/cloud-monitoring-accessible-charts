@@ -74,8 +74,10 @@ const selectors = async (svg, tsData, colorScale, yScale, dateScale,
           const clusterAssignment = await response.json();
           if (currentRep == "Bands") {
             d3.selectAll(".timeSeries").remove();
+            const outlierLines = clusterAssignment["outlier_indexes"].map(
+                (outlierIndex) => tsData[outlierIndex]);
             drawBands(clusterAssignment["min_max"], clusterAssignment["dates"],
-                svg, colorScale, yScale, dateScale, margin);
+                svg, colorScale, yScale, dateScale, margin, outlierLines);
             chartMode = "bands";
           } else {
             if (chartMode != "lines") {
@@ -89,7 +91,7 @@ const selectors = async (svg, tsData, colorScale, yScale, dateScale,
               d3.selectAll("#id" + index)
                   .attr("stroke", () => {
                     if (elt < 0) {
-                      return "#737373";
+                      return "#ff0000";
                     } else {
                       return colorScale(elt);
                     }
