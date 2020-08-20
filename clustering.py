@@ -57,7 +57,7 @@ def time_series_array(data, key):
         points = [-1]*num_times
         for point in time_series["points"]:
             start_time = point["interval"]["startTime"]
-            points[date_to_index[start_time]] = scale_to_range_ten(
+            points[date_to_index[start_time]] = scale_to_range(
                 min_max, point["value"]["doubleValue"])
         data_array[index] = points
 
@@ -67,23 +67,25 @@ def time_series_array(data, key):
         count.one_hot_encoding(time_series["resource"]["labels"],
                                label_to_index, encoding)
         instance_labels[index] = encoding
+    data_array = np.array(data_array)
+    instance_labels = np.array(instance_labels)
+    return data_array, label_to_index, instance_labels, date_to_index, min_max
 
-    return np.array(data_array), label_to_index, np.array(instance_labels)
-
-def scale_to_range_ten(min_max, element):
-    """Scale element to the new range, [0,10].
+def scale_to_range(min_max_old, element, min_max_new=[0, 10]):
+    """Scale element from min_max_new to the new range, min_max_old.
 
     Args:
-        min_max: Original range of the data, [min,max].
+        min_max_old: Original range of the data, [min, max].
         element: Integer that will be scaled to the new range, must be
             within the old_range.
+        min_max_new: New range of the data.
 
     Returns:
         element scaled to the new range.
     """
-    new_range = 10
-    old_range = min_max[1] - min_max[0]
-    return  ((element - min_max[0]) * new_range) / old_range
+    new_range = min_max_new[1] - min_max_new[0]
+    old_range = min_max_old[1] - min_max_old[0]
+    return  ((element - min_max_old[0]) * new_range) / old_range
 
 def fill_with_median(data):
     """Fills missing values (-1) in a time series to the median of the
@@ -623,3 +625,57 @@ def cluster_zone(label_dict, ts_to_labels):
     for ts_index, zone_index in zone_label:
         labels[ts_index] = index_to_label[zone_index]
     return labels
+
+def clusters_min_max(data, assignment, date_to_index, old_range, outlier):
+    """Calculates the min and max value at each point for each cluster.
+
+    Args:
+        data: Array where each row is a time series and each column is
+            a date.
+        assignment: Array where the ith element is the cluster the ith
+            time series was placed in.
+        date_to_index: A dictionary mapping each date to its index.
+        old_range: The original range for the values in data.
+        outlier: Whether outliers are identified, must be "on" or "off".
+
+    Returns:
+        A tuple of the fomrat (min_max, dates) where min_max[i] has a
+        list of the minimum and maximum values of time series i and
+        dates has the corresponding dates for the given values.
+    """
+    sorted_dates = sorted(date_to_index.items(), key=lambda x: x[1])
+    dates = [date for date, index in sorted_dates]
+
+    # Rescales num to its original scale, otheriwse returns nan.
+    def original_scale(num):
+        if num != -1:
+            return scale_to_range([0, 10], num, old_range)
+        return np.nan
+
+    clusters, outlier_indexes = {}, []
+    # Each iteration rescales the time series at index to its original scale
+    # and appends it to the list of time series for the cluster. If 
+    # outlier == "on" then the time series is not appended to the list of time
+    # series for that cluster, instead, the c;uster index is added to the list
+    # of outlier_indexes
+    for index, label in enumerate(assignment):
+        if outlier == "off" or label > 0:
+            abs_label = abs(label)
+            time_series = np.array(list(map(original_scale, data[index])))
+            if abs_label not in clusters:
+                clusters[abs_label] = np.expand_dims(time_series, axis=0)
+            else:
+                clusters[abs_label] = np.append(clusters[abs_label],
+                                                [time_series], axis=0)
+        else:
+            outlier_indexes.append(index)
+
+    entries = data.shape[1]
+    min_max = np.full((max(clusters.keys()), 2, entries), old_range[0])
+    for label in clusters:
+        for col in range(entries):
+            if not np.all(np.isnan(np.array(clusters[label])[:, col])):
+                min_max[label -1][0][col] = np.nanmin(clusters[label][:, col])
+                min_max[label -1][1][col] = np.nanmax(clusters[label][:, col])
+
+    return min_max.tolist(), dates, outlier_indexes

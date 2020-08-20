@@ -45,7 +45,9 @@ describe("Suite for selector", function() {
     d3.select("body")
         .append("select")
         .attr("id", "filterSelector");
-
+    d3.select("body")
+        .append("select")
+        .attr("id", "repSelector");
     updateSelector("cluster", ["All", "cat", "dog"]);
     updateSelector("filter", ["Cluster", "Zone"]);
     d3.select("select#clusterSelector").property("value", "cat");
@@ -68,6 +70,9 @@ describe("Suite for selector", function() {
     d3.select("body")
         .append("select")
         .attr("id", "filterSelector");
+    d3.select("body")
+        .append("select")
+        .attr("id", "repSelector");
 
     updateSelector("cluster", ["All", "cat", "dog"]);
     updateSelector("filter", ["Cluster", "Zone"]);

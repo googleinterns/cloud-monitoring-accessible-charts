@@ -26,9 +26,9 @@ def load_data(chart_id):
                                                 "message": "No such chart"}}
         return response, 404
 
-@app.route("/clustering/<algorithm>/<similarity>/<encoding>/<outlier>/<chart_id>")
-@app.route("/clustering/<algorithm>/<similarity>/<encoding>/<outlier>/<chart_id>/<key>")
-def cluster(algorithm, similarity, encoding, outlier, chart_id, key=None):
+@app.route("/clustering/<algorithm>/<similarity>/<encoding>/<outlier>/<rep>/<chart_id>")
+@app.route("/clustering/<algorithm>/<similarity>/<encoding>/<outlier>/<rep>/<chart_id>/<key>")
+def cluster(algorithm, similarity, encoding, outlier, rep, chart_id, key=None):
     """Returns the cluster each time series was placed in.
 
     Args:
@@ -39,6 +39,7 @@ def cluster(algorithm, similarity, encoding, outlier, chart_id, key=None):
         encoding: The method used for encoding the labels. Must
             be "None" or "One-Hot".
         outlier: Whether outliers are identified, must be "on" or "off".
+        rep: Whether the data is represented as "lines" or "bands".
         chart_id: The id of the file containing the data that k-means
             clustering is run on.
         key: The key for the time series labels that are saved. If None,
@@ -46,30 +47,37 @@ def cluster(algorithm, similarity, encoding, outlier, chart_id, key=None):
             values with that key are kept.
 
     Returns:
-        A string of the list containing the label of the cluster each
-        time series was grouped in.
+        A json with a list containing the label of the cluster each
+        time series was grouped in, and the min_max of each cluster and
+        the corresponding dates for each value if rep == "bands",
+        otheriwse and dates are empty lists.
     """
     data = load_data(chart_id)
     if "timeSeries" not in data:
         return data
-    time_series_data, label_dict, ts_to_labels = clustering.time_series_array(
-        data, key)
-    time_series_data = clustering.preprocess(time_series_data, encoding,
-                                             similarity, ts_to_labels,
-                                             algorithm)
+    (time_series_data, label_dict, ts_to_labels, dates,
+     old_range) = clustering.time_series_array(data, key)
+    ts_data_updated = clustering.preprocess(time_series_data, encoding,
+                                            similarity, ts_to_labels, algorithm)
     if algorithm == "k-means":
-        labels = clustering.kmeans(time_series_data, outlier).tolist()
+        labels = clustering.kmeans(ts_data_updated, outlier).tolist()
     elif algorithm == "k-means-constrained" or algorithm == "k-medians":
-        labels = clustering.kmeans_kmedians(time_series_data, label_dict,
+        labels = clustering.kmeans_kmedians(ts_data_updated, label_dict,
                                             ts_to_labels, algorithm,
                                             outlier).tolist()
     elif algorithm == "zone":
         labels = clustering.cluster_zone(label_dict, ts_to_labels)
     else:
-        labels = clustering.dbscan(time_series_data,  similarity,
-            encoding, outlier).tolist()
-
-    return jsonify({"cluster_labels": labels})
+        labels = clustering.dbscan(ts_data_updated, similarity, encoding,
+                                   outlier).tolist()
+    min_max, ordered_dates, outlier_indexes = [], [], []
+    if rep == "bands":
+        min_max, ordered_dates, outlier_indexes = clustering.clusters_min_max(
+            time_series_data, labels, dates, old_range, outlier)
+    return  jsonify({"cluster_labels": labels,
+                     "min_max": min_max,
+                     "dates": ordered_dates,
+                     "outlier_indexes": outlier_indexes})
 
 @app.route("/frequency/<algorithm>/<similarity>/<label_encoding>/<chart_id>")
 def frequency(similarity, algorithm, label_encoding, chart_id):
@@ -93,8 +101,8 @@ def frequency(similarity, algorithm, label_encoding, chart_id):
     data = load_data(chart_id)
     if "timeSeries" not in data:
         return data
-    time_series_data, label_dict, ts_to_labels = clustering.time_series_array(
-        data, None)
+    (time_series_data, label_dict, ts_to_labels, _,
+     _) = clustering.time_series_array(data, None)
     time_series_data = clustering.preprocess(time_series_data, label_encoding,
                                              similarity, ts_to_labels, "k-means")
     if algorithm == "k-means":
@@ -130,7 +138,7 @@ def tune_parameters(algorithm, similarity, label_encoding, chart_id):
     data = load_data(chart_id)
     if "timeSeries" not in data:
         return data
-    time_series_data, _, ts_to_labels = clustering.time_series_array(
+    time_series_data, _, ts_to_labels, _, _ = clustering.time_series_array(
         data, None)
     time_series_data = clustering.preprocess(time_series_data, label_encoding,
                                              similarity, ts_to_labels,
