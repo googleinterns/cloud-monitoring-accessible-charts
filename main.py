@@ -58,16 +58,18 @@ def cluster(algorithm, similarity, encoding, outlier, rep, chart_id, key=None):
     (time_series_data, label_dict, ts_to_labels, dates,
      old_range) = clustering.time_series_array(data, key)
     ts_data_updated = clustering.preprocess(time_series_data, encoding,
-                                            similarity, ts_to_labels)
+                                            similarity, ts_to_labels, algorithm)
     if algorithm == "k-means":
         labels = clustering.kmeans(ts_data_updated, outlier).tolist()
-    elif algorithm == "k-means-constrained":
-        labels = clustering.kmeans_constrained(ts_data_updated, label_dict,
-                                               ts_to_labels, outlier).tolist()
+    elif algorithm == "k-means-constrained" or algorithm == "k-medians":
+        labels = clustering.kmeans_kmedians(ts_data_updated, label_dict,
+                                            ts_to_labels, algorithm,
+                                            outlier).tolist()
     elif algorithm == "zone":
         labels = clustering.cluster_zone(label_dict, ts_to_labels)
     else:
-        labels = clustering.dbscan(ts_data_updated, outlier).tolist()
+        labels = clustering.dbscan(ts_data_updated, similarity, encoding,
+                                   outlier).tolist()
     min_max, ordered_dates, outlier_indexes = [], [], []
     if rep == "bands":
         min_max, ordered_dates, outlier_indexes = clustering.clusters_min_max(
@@ -102,12 +104,12 @@ def frequency(similarity, algorithm, label_encoding, chart_id):
     (time_series_data, label_dict, ts_to_labels, _,
      _) = clustering.time_series_array(data, None)
     time_series_data = clustering.preprocess(time_series_data, label_encoding,
-                                             similarity, ts_to_labels)
+                                             similarity, ts_to_labels, "k-means")
     if algorithm == "k-means":
         labels = clustering.kmeans(time_series_data, "off")
     elif algorithm == "k-means-constrained":
-        labels = clustering.kmeans_constrained(time_series_data, label_dict,
-                                               ts_to_labels, "off")
+        labels = clustering.kmeans_kmedians(time_series_data, label_dict,
+                                            ts_to_labels, algorithm, "off")
 
     cluster_labels = clustering.cluster_to_labels(labels, ts_to_labels)
 
@@ -139,7 +141,8 @@ def tune_parameters(algorithm, similarity, label_encoding, chart_id):
     time_series_data, _, ts_to_labels, _, _ = clustering.time_series_array(
         data, None)
     time_series_data = clustering.preprocess(time_series_data, label_encoding,
-                                             similarity, ts_to_labels)
+                                             similarity, ts_to_labels,
+                                             algorithm)
     if algorithm == "k-means":
         distances = clustering.tuning_k(time_series_data)
     else:

@@ -188,6 +188,8 @@ function drawLines(svg, formattedData, colorScale, yScale, dateScale, margin) {
  */
 function drawBands(minMax, dates, svg, colorScale, yScale, dateScale, margin,
     outlierLines) {
+    drawLines(svg, outlierLines, colorScale, yScale, dateScale, margin);
+
   minMax.forEach(([minTS, maxTS], index) => {
     const minLine = minTS.map((val, i) => [val, maxTS[i], new Date(dates[i])]);
     const area = d3.area()
@@ -203,7 +205,6 @@ function drawBands(minMax, dates, svg, colorScale, yScale, dateScale, margin,
         .attr("transform", "translate(" + margin.left + ", " + margin.top + ")")
         .attr("class", "timeSeries cluster-All cluster-"+(index+1));
   });
-  drawLines(svg, outlierLines, colorScale, yScale, dateScale, margin);
 }
 
 chartMode = "lines";

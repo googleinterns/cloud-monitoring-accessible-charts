@@ -13,7 +13,8 @@
  */
 const selectors = async (svg, tsData, colorScale, yScale, dateScale,
   margin, chartId, zones) => {
-  const modes = ["Default", "DBSCAN", "K-means", "K-means-constrained", "Zone"];
+  const modes = ["Default", "DBSCAN", "K-means", "K-means-constrained",
+    "K-medians", "Zone"];
   const similarity = ["Correlation", "Proximity"];
   const encoding = ["None", "One-Hot"];
   const outlier = ["Off", "On"];

@@ -2,10 +2,11 @@ import json
 from statistics import median
 import numpy as np
 from sklearn.cluster import KMeans, DBSCAN
-from sklearn.preprocessing import MinMaxScaler, scale
+from sklearn.preprocessing import scale
 from sklearn.neighbors import NearestNeighbors
 from sklearn.metrics import pairwise_distances, pairwise_distances_argmin_min
 from sklearn.metrics import pairwise_distances_argmin
+from sklearn.decomposition import PCA
 from scipy.spatial import distance
 import count
 
@@ -14,7 +15,11 @@ import count
 # the curve for their respective functions and produced reasonable clusters.
 KMEANS_RATIO = 20
 KMEANS_MIN = 6
-DBSCAN_EPS = 1.2
+EPS_CORRELATION_NONE = 2.4
+EPS_PROXIMITY_NONE = 1.3
+EPS_PROXOMITY_ONE_HOT = 2.1
+EPS_CORRELATION_ONE_HOT = 2.7
+
 # It is common to reinitialize the centroids for k-means 10 times.
 NUM_RUNS = 10
 
@@ -98,7 +103,7 @@ def fill_with_median(data):
                 row[i] = med
     return data_array
 
-def preprocess(data, label_encoding, similarity, ts_to_labels):
+def preprocess(data, label_encoding, similarity, ts_to_labels, algorithm):
     """Updates the data according to label_encoding and similarity.
 
     Args:
@@ -110,13 +115,22 @@ def preprocess(data, label_encoding, similarity, ts_to_labels):
             before clustering. Must be "proximity" or "correlation".
         ts_to_labels: Array where each row is a time series and each
             column is a label.
+        algorithm: The algorithm that will be run on data.
 
     Returns:
-        An np array updated according to label_encoding and similarity.
+        An np array updated according to label_encoding, similarity and
+        algorithm.
     """
     updated_data = data
     if similarity == "correlation":
         updated_data = scale_to_zero(updated_data)
+    if algorithm == "dbscan":
+        if similarity == "correlation":
+            pca = PCA(n_components=.75)
+        elif similarity == "proximity":
+            pca = PCA(n_components=.85)
+        pca.fit(updated_data)
+        updated_data = pca.transform(updated_data)
     if label_encoding == "one-hot":
         updated_data = np.concatenate((updated_data, ts_to_labels), axis=1)
     return updated_data
@@ -166,14 +180,38 @@ def tuning_eps(data):
         A sorted list of the distance of each time series to its
         closest neighbor.
     """
-    min_max_scaler = MinMaxScaler()
-    min_max_scaled = min_max_scaler.fit_transform(data)
-
     neighbors = NearestNeighbors(n_neighbors=2)
-    fitted = neighbors.fit(min_max_scaled)
-    distances, _ = fitted.kneighbors(min_max_scaled)
-
+    fitted = neighbors.fit(data)
+    distances, _ = fitted.kneighbors(data)
     return (np.sort(distances[:, 1])).tolist()
+
+def tuning_eps_options(data, start, end, min_clusters):
+    """Returns a list of tuples (num_outliers, num_clusters, eps) such
+    that runing dbscan with each eps results in more than min_clusters.
+    The options are sorted according to the number of oulliers produced.
+
+    Args:
+        data: An array where each row is a time series and each column
+            is a date.
+        start: Smallest eps that is tested.
+        end: Largest eps that is tested.
+        min_clusters: The minimum number of clusters that should be
+            produced by dbscan.
+
+    Returns:
+        A list of tuples where each tuple has num_outliers, num_clusters,
+        and eps.
+    """
+    ops = []
+    while start <= end:
+        dbscan_result = DBSCAN(eps=start, min_samples=2).fit(data)
+        num_outliers = len(np.where(dbscan_result.labels_ == -1)[0])
+        num_clusters = len(np.unique(dbscan_result.labels_))
+        if num_clusters > min_clusters:
+            ops.append((num_outliers, num_clusters, start))
+        start += 0.1
+    ops.sort()
+    return ops
 
 def kmeans(data, outlier):
     """Generates clusters using kmeans.
@@ -196,11 +234,15 @@ def kmeans(data, outlier):
         outliers_kmeans(data, labels, kmeans_result.cluster_centers_)
     return labels
 
-def dbscan(data, outlier):
+def dbscan(data, similarity, encoding, outlier):
     """Generates clusters using DBSCAN.
 
     Args:
         data: A timeSeries object.
+        similarity: The similarity measure used for scaling the data
+            before clustering. Must be "proximity" or "correlation".
+        label_encoding: The method used for encoding the labels. Must
+            be "none" or "one-hot".
         outlier: Indicates whether outliers are labeled as outliers.
 
     Returns:
@@ -208,11 +250,18 @@ def dbscan(data, outlier):
         represents the cluster the nth element was placed in. Cluster
         labels are integers.
     """
-    min_max_scaler = MinMaxScaler()
-    min_max_scaled = min_max_scaler.fit_transform(data)
-    dbscan_result = DBSCAN(eps=DBSCAN_EPS, min_samples=2).fit(min_max_scaled)
+    if similarity == "correlation" and encoding == "none":
+        eps_tuned = EPS_CORRELATION_NONE
+    elif similarity == "correlation" and encoding == "one-hot":
+        eps_tuned = EPS_CORRELATION_ONE_HOT
+    elif encoding == "none":
+        eps_tuned = EPS_PROXIMITY_NONE
+    else:
+        eps_tuned = EPS_PROXOMITY_ONE_HOT
+
+    dbscan_result = DBSCAN(eps=eps_tuned, min_samples=2).fit(data)
     cluster_assignment = np.copy(dbscan_result.labels_)
-    medians = cluster_medians(data, cluster_assignment)
+    medians, _ = cluster_medians(data, cluster_assignment)
 
     outlier_indexes = np.where(cluster_assignment == -1)[0]
     cluster_assignment += 1
@@ -235,8 +284,10 @@ def cluster_medians(data, cluster_assignment):
         element is the cluster the nth time series was placed in.
 
     Returns:
-        An array where the nth element is the median of the nth cluster.
-    """
+        A tuple (cluster_median, valid) where median is an array where
+        the nth element is the median of the nth cluster if valid==True,
+        meaning there was a valid assignment, otherwise returns an empty
+        list and False.    """
     clusters = {}
 
     for index in np.where(cluster_assignment >= 0)[0]:
@@ -245,8 +296,12 @@ def cluster_medians(data, cluster_assignment):
             clusters[label] = [data[index]]
         else:
             clusters[label] = np.append(clusters[label], [data[index]], axis=0)
-    medians = [np.median(clusters[i], axis=0) for i in range(len(clusters))]
-    return np.array(medians)
+    medians = []
+    for i in range(len(clusters)):
+        if i not in clusters:
+            return [], False
+        medians.append(np.median(clusters[i], axis=0))
+    return np.array(medians), True
 
 def cluster_to_labels(cluster_labels, resource_to_label):
     """Returns a list of the percentage of elements in a cluster that
@@ -323,8 +378,9 @@ def outliers_kmeans(data, ts_cluster_labels, cluster_centers):
         if euc_dist > 6.75:
             ts_cluster_labels[index] = -label
 
-def kmeans_constrained(data, label_dict, ts_to_labels, outlier):
-    """Runs k-means with constraints and uses k-means++ initialization.
+def kmeans_kmedians(data, label_dict, ts_to_labels, algorithm, outlier):
+    """Runs k-means with constraints or k-medians based on algorithm.
+    Uses a k-means++ initialization.
 
     Args:
         data: An np array where each row is a time series and each
@@ -333,13 +389,16 @@ def kmeans_constrained(data, label_dict, ts_to_labels, outlier):
             values are the indexes of the labels in data.
         ts_to_labels: An array where each row is a timeSeries and each
             column is a label.
+        algorithm: The algorithm run on data, must be k-means or k-medians.
         outlier: Indicates whether outliers are labeled as outliers.
 
     Returns:
         An np array where the ith element is the cluster the ith time
         series was placed in.
     """
-    must_link, can_not_link = make_constraints(ts_to_labels)
+    must_link, can_not_link = {}, {}
+    if algorithm == "k-means-constrained":
+        must_link, can_not_link = make_constraints(ts_to_labels)
     num_clusters = (len(data) // KMEANS_RATIO) + KMEANS_MIN
     clusters_distances = []
 
@@ -351,8 +410,12 @@ def kmeans_constrained(data, label_dict, ts_to_labels, outlier):
 
             clusters, ts_to_cluster = update_clusters(data, centroids,
                                                       must_link, can_not_link)
-            valid_clusters = update_centroids(data, clusters, centroids)
-
+            if algorithm == "k-means-constrained":
+                valid_clusters = update_centroids(data, clusters, centroids)
+            if algorithm == "k-medians":
+                ts_cluster_ar = np.array([v for k, v in sorted(
+                    ts_to_cluster.items(), key=lambda item: item[0])])
+                centroids, valid_clusters = cluster_medians(data, ts_cluster_ar)
             if not valid_clusters:
                 break
 
