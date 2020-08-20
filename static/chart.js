@@ -94,6 +94,51 @@ const drawChart = async () => {
                 .x((d) => dateScale(d[1])),
             ).attr("transform",
                 "translate(" + margin.left + ", " + margin.top + ")")
+            .on("mouseover", function() {
+              const currentFilter = d3.select("select#filterSelector")
+                  .property("value");
+              const cluster = d3.select("select#clusterSelector")
+                  .property("value");
+              const classes = d3.select(this).attr("class").split(" ");
+              let currentCluster = classes[classes.length-1];
+              const dashIndex = currentCluster.lastIndexOf("-") + 1;
+              currentCluster = currentCluster.slice(dashIndex);
+
+              if (cluster == "All") {
+                d3.select(this)
+                    .attr("stroke-width", 3);
+                d3.selectAll(".timeSeries")
+                    .attr("opacity", 0.2);
+                d3.selectAll(".cluster-" + currentCluster)
+                    .attr("opacity", 1);
+                d3.selectAll(".cluster--" + currentCluster)
+                    .attr("opacity", 1);
+              } else if (currentCluster == cluster || -currentCluster ==
+                         cluster || currentFilter == "Zone") {
+                d3.select(this)
+                    .attr("stroke-width", 3);
+              }
+            })
+            .on("mouseout", function() {
+              const currentFilter = d3.select("select#filterSelector")
+                  .property("value");
+              const cluster = d3.select("select#clusterSelector")
+                  .property("value");
+              const classes = d3.select(this).attr("class").split(" ");
+              let currentCluster = classes[classes.length-1];
+              const dashIndex = currentCluster.lastIndexOf("-") + 1;
+              currentCluster = currentCluster.slice(dashIndex);
+              if (cluster == "All") {
+                d3.select(this)
+                    .attr("stroke-width", 1);
+                d3.selectAll(".timeSeries")
+                    .attr("opacity", 1);
+              } else if (currentCluster == cluster || -currentCluster ==
+                      cluster || currentFilter == "Zone") {
+                d3.select(this)
+                    .attr("stroke-width", 1);
+              }
+            })
             .attr("id", "id"+index)
             .attr("class", "timeSeries " + zone + " cluster-All");
       });
