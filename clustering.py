@@ -5,6 +5,7 @@ from sklearn.cluster import KMeans, DBSCAN
 from sklearn.preprocessing import MinMaxScaler, scale
 from sklearn.neighbors import NearestNeighbors
 from sklearn.metrics import pairwise_distances, pairwise_distances_argmin_min
+from sklearn.metrics import pairwise_distances_argmin
 from scipy.spatial import distance
 import count
 
@@ -74,7 +75,7 @@ def scale_to_range_ten(min_max, element):
 
     Returns:
         element scaled to the new range.
-        """
+    """
     new_range = 10
     old_range = min_max[1] - min_max[0]
     return  ((element - min_max[0]) * new_range) / old_range
@@ -172,11 +173,12 @@ def tuning_eps(data):
 
     return (np.sort(distances[:, 1])).tolist()
 
-def kmeans(data):
+def kmeans(data, outlier):
     """Generates clusters using kmeans.
 
     Args:
         data: A timeSeries object.
+        outlier: Indicates whether outliers are labeled as outliers.
 
     Returns:
         A list of cluster labels such that the nth element in the list
@@ -187,13 +189,17 @@ def kmeans(data):
     tuning_ratio = len(data) // KMEANS_RATIO
     kmeans_result = KMeans(n_clusters=tuning_ratio + KMEANS_MIN,
                            random_state=0).fit(data)
-    return kmeans_result.labels_
+    labels = np.copy(kmeans_result.labels_) + 1
+    if outlier == "on":
+        outliers_kmeans(data, labels, kmeans_result.cluster_centers_)
+    return labels
 
-def dbscan(data):
+def dbscan(data, outlier):
     """Generates clusters using DBSCAN.
 
     Args:
         data: A timeSeries object.
+        outlier: Indicates whether outliers are labeled as outliers.
 
     Returns:
         A list of cluster labels such that the nth element in the list
@@ -202,9 +208,43 @@ def dbscan(data):
     """
     min_max_scaler = MinMaxScaler()
     min_max_scaled = min_max_scaler.fit_transform(data)
-    dbscan_result = DBSCAN(eps=DBSCAN_EPS, min_samples=1).fit(
-        min_max_scaled)
-    return dbscan_result.labels_
+    dbscan_result = DBSCAN(eps=DBSCAN_EPS, min_samples=2).fit(min_max_scaled)
+    cluster_assignment = np.copy(dbscan_result.labels_)
+    medians = cluster_medians(data, cluster_assignment)
+
+    outlier_indexes = np.where(cluster_assignment == -1)[0]
+    cluster_assignment += 1
+    closest = pairwise_distances_argmin(data[outlier_indexes, :], medians)
+
+    for index, index_ts in enumerate(outlier_indexes):
+        if outlier == "on":
+            cluster_assignment[index_ts] = - (closest[index] + 1)
+        else:
+            cluster_assignment[index_ts] = closest[index] + 1
+    return cluster_assignment
+
+def cluster_medians(data, cluster_assignment):
+    """Calculates the cluster medians based on the cluster_assignment.
+
+    Args:
+        data: Array where each row is a time series and each column is
+            a date.
+        cluster_assignment: An array of cluster labels where the nth
+        element is the cluster the nth time series was placed in.
+
+    Returns:
+        An array where the nth element is the median of the nth cluster.
+    """
+    clusters = {}
+
+    for index in np.where(cluster_assignment >= 0)[0]:
+        label = cluster_assignment[index]
+        if label not in clusters:
+            clusters[label] = [data[index]]
+        else:
+            clusters[label] = np.append(clusters[label], [data[index]], axis=0)
+    medians = [np.median(clusters[i], axis=0) for i in range(len(clusters))]
+    return np.array(medians)
 
 def cluster_to_labels(cluster_labels, resource_to_label):
     """Returns a list of the percentage of elements in a cluster that
@@ -263,7 +303,25 @@ def sort_labels(label_dict, cluster_labels, ts_to_labels):
 
     return ordered_labels, ordered_cluster_labels, ordered_ts_labels
 
-def kmeans_constrained(data, label_dict, ts_to_labels):
+def outliers_kmeans(data, ts_cluster_labels, cluster_centers):
+    """Updates ts_cluster_labels to reflect whether a time series is an
+    outlier in the cluster it was assigned to. '-n' indicates an outlier
+    in cluster n.
+
+    Args:
+        data: Array where each row is a time series and each column is
+            a date.
+        ts_cluster_labels: Array where the ith element is the cluster
+            the ith time series was placed in.
+        cluster_centers: The centroids that were outputted when the
+            clustering algorithm was run.
+    """
+    for index, label in enumerate(ts_cluster_labels):
+        euc_dist = distance.euclidean(data[index], cluster_centers[label - 1])
+        if euc_dist > 6.75:
+            ts_cluster_labels[index] = -label
+
+def kmeans_constrained(data, label_dict, ts_to_labels, outlier):
     """Runs k-means with constraints and uses k-means++ initialization.
 
     Args:
@@ -273,6 +331,7 @@ def kmeans_constrained(data, label_dict, ts_to_labels):
             values are the indexes of the labels in data.
         ts_to_labels: An array where each row is a timeSeries and each
             column is a label.
+        outlier: Indicates whether outliers are labeled as outliers.
 
     Returns:
         An np array where the ith element is the cluster the ith time
@@ -302,11 +361,14 @@ def kmeans_constrained(data, label_dict, ts_to_labels):
                 for index, cluster in enumerate(assignment):
                     center_dist += distance.euclidean(data[index],
                                                       centroids[cluster])
-                clusters_distances.append([center_dist, assignment, run_num])
+                clusters_distances.append([center_dist, assignment, centroids])
                 break
 
     clusters_distances.sort()
-    return np.array(clusters_distances[0][1])
+    result =  np.array(clusters_distances[0][1]) + 1
+    if outlier == "on":
+        outliers_kmeans(data, result, clusters_distances[0][2])
+    return result
 
 def update_clusters(data, centroids, must_link, can_not_link):
     """Updates the cluster assignments based on the centroids and the

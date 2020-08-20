@@ -1,4 +1,3 @@
-/* eslint-disable quotes */
 /**
  * Creates the selectors for the chart and updates the chart based on the
  * selected values.
@@ -10,17 +9,20 @@ const selectors = async (chartId, colorScale, zones) => {
   const modes = ["Default", "K-means", "DBSCAN", "K-means-constrained", "Zone"];
   const similarity = ["Correlation", "Proximity"];
   const encoding = ["None", "One-Hot"];
+  const outlier = ["Off", "On"];
   clusters = ["All"];
   allZones = ["All"].concat(zones);
   const filterBy = ["Cluster", "Zone"];
   updateSelector("mode", modes);
   updateSelector("similarity", similarity);
   updateSelector("encoding", encoding);
+  updateSelector("outlier", outlier);
   updateSelector("cluster", clusters);
   updateSelector("filter", filterBy);
   d3.select("select#" + "mode" + "Selector").on("change", updateChart);
   d3.select("select#" + "similarity" + "Selector").on("change", updateChart);
   d3.select("select#" + "encoding" + "Selector").on("change", updateChart);
+  d3.select("select#" + "outlier" + "Selector").on("change", updateChart);
   d3.select("select#" + "cluster" + "Selector").on("change", updateCluster);
   d3.select("select#" + "filter" + "Selector").on("change", updateFilter);
 
@@ -33,7 +35,10 @@ const selectors = async (chartId, colorScale, zones) => {
         .property("value");
     const currentEncoding = d3.select("select#encodingSelector")
         .property("value");
-
+    const currentOutlier = d3.select("select#outlierSelector")
+        .property("value");
+    updateSelector("cluster", ["All"]);
+    updateCluster();
     if (currentMode == "Default") {
       d3.selectAll(".timeSeries")
           .attr("stroke", (d) => colorScale(d))
@@ -43,7 +48,7 @@ const selectors = async (chartId, colorScale, zones) => {
     } else {
       try {
         let query = currentMode + "/" + currentSimilarity + "/" +
-        currentEncoding + "/" + chartId;
+        currentEncoding + "/" + currentOutlier + "/" + chartId;
         if (currentMode == "Zone") {
           query = query + "/" + "zone";
         }
@@ -55,12 +60,19 @@ const selectors = async (chartId, colorScale, zones) => {
             const classes = d3.select("#id" + index).attr("class");
             const indexCluster = classes.lastIndexOf(" ");
             d3.selectAll("#id" + index)
-                .attr("stroke", colorScale(elt))
+                .attr("stroke", () => {
+                  if (elt < 0) {
+                    return "#737373";
+                  } else {
+                    return colorScale(elt);
+                  }
+                })
                 .attr("class", classes.substring(0, indexCluster) +
                               " cluster-" + elt);
           });
           if (Number.isInteger(labels[0])) {
-            clusters = ["All"].concat(Array.from(new Set(labels)))
+            const uniqueClusters = labels.map((elt) => Math.abs(elt));
+            clusters = ["All"].concat(Array.from(new Set(uniqueClusters)))
                 .sort((a, b) => a-b);
           } else {
             clusters = ["All"].concat(Array.from(new Set(labels))).sort();
@@ -105,6 +117,8 @@ function updateCluster() {
         .attr("opacity", 1);
   } else if (currentFilter == "Cluster") {
     d3.selectAll(".cluster-" + currentCluster)
+        .attr("opacity", 1);
+    d3.selectAll(".cluster--" + currentCluster)
         .attr("opacity", 1);
   } else {
     d3.selectAll("." + currentCluster)

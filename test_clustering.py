@@ -189,6 +189,53 @@ class TestClusteringMethods(unittest.TestCase):
                     [0, 0, 0]]
         self.assertEqual(result.tolist(), solution)
 
+    def test_outliers_simple(self):
+        """Should not make any of the cluster labels outliers."""
+        data = np.array([[0, 10, 9, 7], [1, 7, 9, 6], [3, 4, 3, 3],
+                         [4, 3, 4, 3]])
+        ts_cluster_labels = np.array([1, 1, 2, 2])
+        cluster_centers = np.array([[0.5, 8.5, 9, 6.5], [3.5, 3.5, 3.5, 3]])
+        old = np.copy(ts_cluster_labels)
+        clustering.outliers_kmeans(data, ts_cluster_labels, cluster_centers)
+        self.assertEqual(ts_cluster_labels.tolist(), old.tolist())
+
+    def test_outliers_update_clusters(self):
+        """Should mark some of the time series as outliers."""
+        data = np.array([[0, 10, 9, 7], [1, 7, 9, 6], [3, 4, 3, 3],
+                         [4, 3, 4, 3]])
+        ts_cluster_labels = np.array([1, 1, 2, 2])
+        cluster_centers = np.array([[0.5, 0, 9, 2], [3.5, 3.5, 3.5, 3]])
+        solution = np.array([-1, -1, 2, 2])
+        clustering.outliers_kmeans(data, ts_cluster_labels, cluster_centers)
+        self.assertEqual(ts_cluster_labels.tolist(), solution.tolist())
+
+    def test_cluster_medians(self):
+        """Should return the cluster medians."""
+        data = np.array([[0, 10, 9, 7], [1, 7, 9, 6], [3, 4, 3, 3],
+                         [4, 3, 4, 3], [1, 1, 1, 1], [1, 1, 1, 1]])
+        cluster_assignment = np.array([0, 0, 1, 1, 2, 2])
+        solution = [[0.5, 8.5, 9, 6.5], [3.5, 3.5, 3.5, 3], [1, 1, 1, 1]]
+        result = clustering.cluster_medians(data, cluster_assignment)
+        self.assertEqual(result.tolist(), solution)
+
+    def test_cluster_medians_order(self):
+        """Should return the cluster medians in order."""
+        data = np.array([[0, 10, 9, 7], [1, 7, 9, 6], [3, 4, 3, 3],
+                         [4, 3, 4, 3]])
+        cluster_assignment = np.array([1, 0, 0, 1])
+        solution = [[2, 5.5, 6, 4.5], [2, 6.5, 6.5, 5]]
+        result = clustering.cluster_medians(data, cluster_assignment)
+        self.assertEqual(result.tolist(), solution)
+
+    def test_cluster_median_multiple(self):
+        """Should return the cluster medians when clusters have more
+        than 2 elements."""
+        data = np.array([[0, 10, 9, 7], [1, 7, 9, 6], [3, 4, 3, 3],
+                         [4, 3, 4, 3], [1, 1, 1, 1]])
+        cluster_assignment = np.array([0, 0, 1, 1, 0])
+        solution = [[1, 7, 9, 6], [3.5, 3.5, 3.5, 3]]
+        result = clustering.cluster_medians(data, cluster_assignment)
+        self.assertEqual(result.tolist(), solution)
     def test_add_link_add_index(self):
         """Should add indexes if not in link_dict."""
         must_link = {1: [2, 3], 3: [4, 5], 5: [1, 2]}

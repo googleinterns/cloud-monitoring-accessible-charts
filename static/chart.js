@@ -77,7 +77,9 @@ const drawChart = async () => {
           .attr("transform",
               "translate(" + margin.left + ", " + margin.top + ")");
 
-      const colorScale = d3.scaleOrdinal(d3.schemeCategory10);
+      const colors = ["#D0192C", "#ee99bb", "#cc5588", "#9144BB", "#7e21ff",
+        "#2266ff", "#4593db", "#44dcb4", "#3DAF21", "#eaca58", "#e99958"];
+      const colorScale = d3.scaleOrdinal().range(colors);
 
       formattedData.forEach(([values, dates, zone], index) => {
         const zipped = values.map((val, i) => [val, dates[i]]);
