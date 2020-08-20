@@ -590,6 +590,11 @@ def clusters_min_max(data, assignment, date_to_index, old_range, outlier):
         return np.nan
 
     clusters, outlier_indexes = {}, []
+    # Each iteration rescales the time series at index to its original scale
+    # and appends it to the list of time series for the cluster. If 
+    # outlier == "on" then the time series is not appended to the list of time
+    # series for that cluster, instead, the c;uster index is added to the list
+    # of outlier_indexes
     for index, label in enumerate(assignment):
         if outlier == "off" or label > 0:
             abs_label = abs(label)
