@@ -37,4 +37,48 @@ describe("Suite for selector", function() {
     updateSelector("a", []);
     expect(d3.select("#aSelector").property("value")).toEqual("");
   });
+
+  it("should update clusterSelector when filterSelector==Cluster", function() {
+    d3.select("body")
+        .append("select")
+        .attr("id", "clusterSelector");
+    d3.select("body")
+        .append("select")
+        .attr("id", "filterSelector");
+
+    updateSelector("cluster", ["All", "cat", "dog"]);
+    updateSelector("filter", ["Cluster", "Zone"]);
+    d3.select("select#clusterSelector").property("value", "cat");
+
+    clusters = ["All", 0, 1];
+    updateFilter();
+
+    // The value should be All because All is one of the options for
+    // clusterSelector and updateFilter() sets its to All.
+    expect(d3.select("#clusterSelector").property("value")).toEqual("All");
+    d3.selectAll("#clusterSelector").selectAll("option").each((elt, i) => {
+      expect(elt).toEqual(clusters[i]);
+    });
+  });
+
+  it("should update clusterSelector when filterSelector==Zone", function() {
+    d3.select("body")
+        .append("select")
+        .attr("id", "clusterSelector");
+    d3.select("body")
+        .append("select")
+        .attr("id", "filterSelector");
+
+    updateSelector("cluster", ["All", "cat", "dog"]);
+    updateSelector("filter", ["Cluster", "Zone"]);
+
+    d3.select("select#filterSelector").property("value", "Zone");
+
+    allZones = ["All", "zone-1", "zone-2", "zone-3"];
+    updateFilter();
+    expect(d3.select("#clusterSelector").property("value")).toEqual("All");
+    d3.selectAll("#clusterSelector").selectAll("option").each( (elt, i) => {
+      expect(elt).toEqual(allZones[i]);
+    });
+  });
 });

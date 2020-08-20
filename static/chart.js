@@ -38,11 +38,15 @@ const drawChart = async () => {
   const chartId = "002";
   try {
     const response = await callFetch("data/" + chartId);
-
+    const allZones = new Set();
     if (response.status >= 200 && response.status <= 299) {
       const data = await response.json();
       const formattedData = data.timeSeries.map((timeSeries) => {
-        return formatPoints(timeSeries.points);
+        const zone = timeSeries["resource"]["labels"]["zone"];
+        allZones.add(zone);
+        const points = formatPoints(timeSeries.points);
+        points.push(zone);
+        return points;
       });
 
       const margin = {left: 40, right: 20, top: 30, bottom: 40};
@@ -73,10 +77,12 @@ const drawChart = async () => {
           .attr("transform",
               "translate(" + margin.left + ", " + margin.top + ")");
 
-      const colorScale = d3.scaleOrdinal(d3.schemeCategory10);
+      const colors = ["#D0192C", "#ee99bb", "#cc5588", "#9144BB", "#7e21ff",
+        "#2266ff", "#4593db", "#44dcb4", "#3DAF21", "#eaca58", "#e99958"];
+      const colorScale = d3.scaleOrdinal().range(colors);
 
-      formattedData.forEach((elt, index) => {
-        const zipped = elt[0].map((val, i) => [val, elt[1][i]]);
+      formattedData.forEach(([values, dates, zone], index) => {
+        const zipped = values.map((val, i) => [val, dates[i]]);
 
         svg.append("path")
             .datum(zipped)
@@ -88,10 +94,55 @@ const drawChart = async () => {
                 .x((d) => dateScale(d[1])),
             ).attr("transform",
                 "translate(" + margin.left + ", " + margin.top + ")")
+            .on("mouseover", function() {
+              const currentFilter = d3.select("select#filterSelector")
+                  .property("value");
+              const cluster = d3.select("select#clusterSelector")
+                  .property("value");
+              const classes = d3.select(this).attr("class").split(" ");
+              let currentCluster = classes[classes.length-1];
+              const dashIndex = currentCluster.lastIndexOf("-") + 1;
+              currentCluster = currentCluster.slice(dashIndex);
+
+              if (cluster == "All") {
+                d3.select(this)
+                    .attr("stroke-width", 3);
+                d3.selectAll(".timeSeries")
+                    .attr("opacity", 0.2);
+                d3.selectAll(".cluster-" + currentCluster)
+                    .attr("opacity", 1);
+                d3.selectAll(".cluster--" + currentCluster)
+                    .attr("opacity", 1);
+              } else if (currentCluster == cluster || -currentCluster ==
+                         cluster || currentFilter == "Zone") {
+                d3.select(this)
+                    .attr("stroke-width", 3);
+              }
+            })
+            .on("mouseout", function() {
+              const currentFilter = d3.select("select#filterSelector")
+                  .property("value");
+              const cluster = d3.select("select#clusterSelector")
+                  .property("value");
+              const classes = d3.select(this).attr("class").split(" ");
+              let currentCluster = classes[classes.length-1];
+              const dashIndex = currentCluster.lastIndexOf("-") + 1;
+              currentCluster = currentCluster.slice(dashIndex);
+              if (cluster == "All") {
+                d3.select(this)
+                    .attr("stroke-width", 1);
+                d3.selectAll(".timeSeries")
+                    .attr("opacity", 1);
+              } else if (currentCluster == cluster || -currentCluster ==
+                      cluster || currentFilter == "Zone") {
+                d3.select(this)
+                    .attr("stroke-width", 1);
+              }
+            })
             .attr("id", "id"+index)
-            .attr("class", "timeSeries cluster-All");
+            .attr("class", "timeSeries " + zone + " cluster-All");
       });
-      selectors(chartId, colorScale);
+      selectors(chartId, colorScale, Array.from(allZones).sort());
     } else {
       const error = await response.json();
       showError(response.status + ". " + error.error.message );

@@ -18,7 +18,7 @@ def one_hot_encoding(ts_labels, label_to_index, labels_encoded):
         if label_value in label_to_index:
             labels_encoded[label_to_index[label_value]] = 1
 
-def count_labels(ts_labels, label_count):
+def count_labels(ts_labels, label_count, key):
     """Updates label_count based on ts_labels.
 
     Args:
@@ -26,15 +26,19 @@ def count_labels(ts_labels, label_count):
             is the label value.
         label_count: Dictionary where each key is a label and each
             value is the number of times the label appears in the data.
+        key: The key for the time series labels that are saved. If None,
+            then all label values may be kept, otherwise only label
+            values with that key are kept.
     """
     for label in ts_labels:
-        label_value = ts_labels[label]
-        if label_value not in label_count:
-            label_count[label_value] = 1
-        else:
-            label_count[label_value] += 1
+        if not key or key and key == label:
+            label_value = ts_labels[label]
+            if label_value not in label_count:
+                label_count[label_value] = 1
+            else:
+                label_count[label_value] += 1
 
-def get_dates_labels(data, date_to_index, label_to_count, min_max):
+def get_dates_labels(data, date_to_index, label_to_count, min_max, key):
     """Updates date_to_index and label_to_count to include all unique
     dates and the count of each unique label, respectively.
 
@@ -57,5 +61,5 @@ def get_dates_labels(data, date_to_index, label_to_count, min_max):
             if val > min_max[1]:
                 min_max[1] = val
 
-        count_labels(time_series["metric"]["labels"], label_to_count)
-        count_labels(time_series["resource"]["labels"], label_to_count)
+        count_labels(time_series["metric"]["labels"], label_to_count, key)
+        count_labels(time_series["resource"]["labels"], label_to_count, key)
