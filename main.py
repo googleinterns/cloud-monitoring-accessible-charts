@@ -27,7 +27,8 @@ def load_data(chart_id):
         return response, 404
 
 @app.route("/clustering/<algorithm>/<similarity>/<encoding>/<outlier>/<chart_id>")
-def cluster(algorithm, similarity, encoding, outlier, chart_id):
+@app.route("/clustering/<algorithm>/<similarity>/<encoding>/<outlier>/<chart_id>/<key>")
+def cluster(algorithm, similarity, encoding, outlier, chart_id, key=None):
     """Returns the cluster each time series was placed in.
 
     Args:
@@ -40,6 +41,9 @@ def cluster(algorithm, similarity, encoding, outlier, chart_id):
         outlier: Whether outliers are identified, must be "on" or "off".
         chart_id: The id of the file containing the data that k-means
             clustering is run on.
+        key: The key for the time series labels that are saved. If None,
+            then all label values may be kept, otherwise only label
+            values with that key are kept.
 
     Returns:
         A string of the list containing the label of the cluster each
@@ -49,18 +53,23 @@ def cluster(algorithm, similarity, encoding, outlier, chart_id):
     if "timeSeries" not in data:
         return data
     time_series_data, label_dict, ts_to_labels = clustering.time_series_array(
-        data)
+        data, key)
     time_series_data = clustering.preprocess(time_series_data, encoding,
                                              similarity, ts_to_labels)
     if algorithm == "k-means":
-        labels = clustering.kmeans(time_series_data, outlier)
+        labels = clustering.kmeans(time_series_data, outlier).tolist()
+    elif algorithm == "k-means-constrained":
+        labels = clustering.kmeans_constrained(time_series_data, label_dict,
+                                               ts_to_labels).tolist()
+    elif algorithm == "zone":
+        labels = clustering.cluster_zone(label_dict, ts_to_labels)
     else:
-        labels = clustering.dbscan(time_series_data, outlier)
+        labels = clustering.dbscan(time_series_data, outlier).tolist()
 
-    return str(labels.tolist())
+    return jsonify({"cluster_labels": labels})
 
-@app.route("/frequency/<similarity>/<label_encoding>/<chart_id>")
-def frequency(similarity, label_encoding, chart_id):
+@app.route("/frequency/<algorithm>/<similarity>/<label_encoding>/<chart_id>")
+def frequency(similarity, algorithm, label_encoding, chart_id):
     """Runs kmeans and gets the frequencies of labels per time series
     and labels per cluster.
 
@@ -82,10 +91,15 @@ def frequency(similarity, label_encoding, chart_id):
     if "timeSeries" not in data:
         return data
     time_series_data, label_dict, ts_to_labels = clustering.time_series_array(
-        data)
+        data, None)
     time_series_data = clustering.preprocess(time_series_data, label_encoding,
                                              similarity, ts_to_labels)
-    labels = clustering.kmeans(time_series_data, "off")
+    if algorithm == "k-means":
+        labels = clustering.kmeans(time_series_data, "off")
+    elif algorithm == "k-means-constrained":
+        labels = clustering.kmeans_constrained(time_series_data, label_dict,
+                                               ts_to_labels)
+
     cluster_labels = clustering.cluster_to_labels(labels, ts_to_labels)
 
     ordered_labels, ordered_clusters, ordered_ts = clustering.sort_labels(
@@ -114,7 +128,7 @@ def tune_parameters(algorithm, similarity, label_encoding, chart_id):
     if "timeSeries" not in data:
         return data
     time_series_data, _, ts_to_labels = clustering.time_series_array(
-        data)
+        data, None)
     time_series_data = clustering.preprocess(time_series_data, label_encoding,
                                              similarity, ts_to_labels)
     if algorithm == "k-means":
