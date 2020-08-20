@@ -2,11 +2,12 @@ import json
 from statistics import median
 import numpy as np
 from sklearn.cluster import KMeans, DBSCAN
-from sklearn.preprocessing import MinMaxScaler, scale
+from sklearn.preprocessing import scale
 from sklearn.neighbors import NearestNeighbors
 from sklearn.metrics import pairwise_distances, pairwise_distances_argmin_min
 from sklearn.metrics import pairwise_distances_argmin
 from scipy.spatial import distance
+from sklearn.decomposition import PCA
 import count
 
 # These params where determined by testing various k, eps produced by running
@@ -15,6 +16,18 @@ import count
 KMEANS_RATIO = 20
 KMEANS_MIN = 6
 DBSCAN_EPS = 1.2
+
+# These paramaters where determined by runing tuning_k, tuning_eps and
+# tuning_eps_options.
+# params = {"kmeans_ratio": 20, "kmeans_min": 6, "eps_correlation_none": 2.4,
+#           "eps_proximity_none": 1.3, "eps_proximity_one-hot": 2.1,
+#           "eps_correlation_one-hot": 2.7}
+
+EPS_CORRELATION_NONE = 2.4
+EPS_PROXIMITY_NONE = 1.3
+EPS_PROXOMITY_ONE_HOT = 2.1
+EPS_CORRELATION_ONE_HOT = 2.7
+
 # It is common to reinitialize the centroids for k-means 10 times.
 NUM_RUNS = 10
 
@@ -96,7 +109,7 @@ def fill_with_median(data):
                 row[i] = med
     return data_array
 
-def preprocess(data, label_encoding, similarity, ts_to_labels):
+def preprocess(data, label_encoding, similarity, ts_to_labels, algorithm):
     """Updates the data according to label_encoding and similarity.
 
     Args:
@@ -108,13 +121,22 @@ def preprocess(data, label_encoding, similarity, ts_to_labels):
             before clustering. Must be "proximity" or "correlation".
         ts_to_labels: Array where each row is a time series and each
             column is a label.
+        algorithm: The algorithm that will be run on data.
 
     Returns:
-        An np array updated according to label_encoding and similarity.
+        An np array updated according to label_encoding, similarity and
+        algorithm.
     """
     updated_data = data
     if similarity == "correlation":
         updated_data = scale_to_zero(updated_data)
+    if algorithm == "dbscan":
+        if similarity == "correlation":
+            pca = PCA(n_components=.75)
+        elif similarity == "proximity":
+            pca = PCA(n_components=.85)
+        pca.fit(updated_data)
+        updated_data = pca.transform(updated_data)
     if label_encoding == "one-hot":
         updated_data = np.concatenate((updated_data, ts_to_labels), axis=1)
     return updated_data
@@ -164,14 +186,38 @@ def tuning_eps(data):
         A sorted list of the distance of each time series to its
         closest neighbor.
     """
-    min_max_scaler = MinMaxScaler()
-    min_max_scaled = min_max_scaler.fit_transform(data)
-
     neighbors = NearestNeighbors(n_neighbors=2)
-    fitted = neighbors.fit(min_max_scaled)
-    distances, _ = fitted.kneighbors(min_max_scaled)
-
+    fitted = neighbors.fit(data)
+    distances, _ = fitted.kneighbors(data)
     return (np.sort(distances[:, 1])).tolist()
+
+def tuning_eps_options(data, start, end, min_clusters):
+    """Returns a list of tuples (num_outliers, num_clusters, eps) such
+    that runing dbscan with each eps results in more than min_clusters.
+    The options are sorted according to the number of oulliers produced.
+
+    Args:
+        data: An array where each row is a time series and each column
+            is a date.
+        start: Smallest eps that is tested.
+        end: Largest eps that is tested.
+        min_clusters: The minimum number of clusters that should be
+            produced by dbscan.
+
+    Returns:
+        A list of tuples where each tuple has num_outliers, num_clusters,
+        and eps.
+    """
+    ops = []
+    while start <= end:
+        dbscan_result = DBSCAN(eps=start, min_samples=2).fit(data)
+        num_outliers = len(np.where(dbscan_result.labels_ == -1)[0])
+        num_clusters = len(np.unique(dbscan_result.labels_))
+        if num_clusters > min_clusters:
+            ops.append((num_outliers, num_clusters, start))
+        start += 0.1
+    ops.sort()
+    return ops
 
 def kmeans(data, outlier):
     """Generates clusters using kmeans.
@@ -194,11 +240,15 @@ def kmeans(data, outlier):
         outliers_kmeans(data, labels, kmeans_result.cluster_centers_)
     return labels
 
-def dbscan(data, outlier):
+def dbscan(data, similarity, encoding, outlier):
     """Generates clusters using DBSCAN.
 
     Args:
         data: A timeSeries object.
+        similarity: The similarity measure used for scaling the data
+            before clustering. Must be "proximity" or "correlation".
+        label_encoding: The method used for encoding the labels. Must
+            be "none" or "one-hot".
         outlier: Indicates whether outliers are labeled as outliers.
 
     Returns:
@@ -206,9 +256,16 @@ def dbscan(data, outlier):
         represents the cluster the nth element was placed in. Cluster
         labels are integers.
     """
-    min_max_scaler = MinMaxScaler()
-    min_max_scaled = min_max_scaler.fit_transform(data)
-    dbscan_result = DBSCAN(eps=DBSCAN_EPS, min_samples=2).fit(min_max_scaled)
+    if similarity == "correlation" and encoding == "none":
+        eps_tuned = EPS_CORRELATION_NONE
+    elif similarity == "correlation" and encoding == "one-hot":
+        eps_tuned = EPS_CORRELATION_ONE_HOT
+    elif encoding == "none":
+        eps_tuned = EPS_PROXIMITY_NONE
+    else:
+        eps_tuned = EPS_PROXOMITY_ONE_HOT
+
+    dbscan_result = DBSCAN(eps=eps_tuned, min_samples=2).fit(data)
     cluster_assignment = np.copy(dbscan_result.labels_)
     medians = cluster_medians(data, cluster_assignment)
 

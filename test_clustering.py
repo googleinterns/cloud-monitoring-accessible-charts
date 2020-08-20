@@ -49,7 +49,7 @@ class TestClusteringMethods(unittest.TestCase):
         np_data, label_dict, instance_labels = clustering.time_series_array(
             data, None)
         result = clustering.preprocess(np_data, "one-hot", "correlation",
-                                       instance_labels)
+                                       instance_labels, "k-means")
         solution = [[1, 0, 0],
                     [0, 10, 1],
                     [0, 10, 1],
@@ -67,7 +67,7 @@ class TestClusteringMethods(unittest.TestCase):
                            [0, 0],
                            [1, 0]]
         result = clustering.preprocess(np.array(data), "one-hot", "proximity",
-                                       np.array(instance_labels))
+                                       np.array(instance_labels), "k-means")
         data = [[1.883, 2.9374874, 3.927837, -1, 0, 1],
                 [5.282929, -1, 4.28983738, 3.98198, 0, 1],
                 [8.982978738, 5.9289227, 0, 3.938383, 0, 0],
@@ -85,7 +85,7 @@ class TestClusteringMethods(unittest.TestCase):
                            [0, 0],
                            [1, 0]]
         result = clustering.preprocess(np.array(data), "none", "proximity",
-                                       instance_labels)
+                                       instance_labels, "k-means")
         self.assertEqual(result.tolist(), data)
 
     def test_preprocess_none_correlation(self):
@@ -99,7 +99,7 @@ class TestClusteringMethods(unittest.TestCase):
                            [0],
                            [0]]
         result = clustering.preprocess(np.array(data), "none", "correlation",
-                                       instance_labels)
+                                       instance_labels, "k-means")
         solution = [[2.883, 3.9374874, 4.927837, 0],
                     [6.282929, 0, 5.28983738, 4.98198],
                     [8.982978738, 5.9289227, 0, 3.938383],
