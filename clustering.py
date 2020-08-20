@@ -321,7 +321,7 @@ def outliers_kmeans(data, ts_cluster_labels, cluster_centers):
         if euc_dist > 6.75:
             ts_cluster_labels[index] = -label
 
-def kmeans_constrained(data, label_dict, ts_to_labels):
+def kmeans_constrained(data, label_dict, ts_to_labels, outlier):
     """Runs k-means with constraints and uses k-means++ initialization.
 
     Args:
@@ -331,6 +331,7 @@ def kmeans_constrained(data, label_dict, ts_to_labels):
             values are the indexes of the labels in data.
         ts_to_labels: An array where each row is a timeSeries and each
             column is a label.
+        outlier: Indicates whether outliers are labeled as outliers.
 
     Returns:
         An np array where the ith element is the cluster the ith time
@@ -360,11 +361,14 @@ def kmeans_constrained(data, label_dict, ts_to_labels):
                 for index, cluster in enumerate(assignment):
                     center_dist += distance.euclidean(data[index],
                                                       centroids[cluster])
-                clusters_distances.append([center_dist, assignment, run_num])
+                clusters_distances.append([center_dist, assignment, centroids])
                 break
 
     clusters_distances.sort()
-    return np.array(clusters_distances[0][1])
+    result =  np.array(clusters_distances[0][1]) + 1
+    if outlier == "on":
+        outliers_kmeans(data, result, clusters_distances[0][2])
+    return result
 
 def update_clusters(data, centroids, must_link, can_not_link):
     """Updates the cluster assignments based on the centroids and the

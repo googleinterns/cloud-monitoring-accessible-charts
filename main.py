@@ -60,7 +60,7 @@ def cluster(algorithm, similarity, encoding, outlier, chart_id, key=None):
         labels = clustering.kmeans(time_series_data, outlier).tolist()
     elif algorithm == "k-means-constrained":
         labels = clustering.kmeans_constrained(time_series_data, label_dict,
-                                               ts_to_labels).tolist()
+                                               ts_to_labels, outlier).tolist()
     elif algorithm == "zone":
         labels = clustering.cluster_zone(label_dict, ts_to_labels)
     else:
