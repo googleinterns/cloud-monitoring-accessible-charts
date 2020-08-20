@@ -215,7 +215,7 @@ class TestClusteringMethods(unittest.TestCase):
                          [4, 3, 4, 3], [1, 1, 1, 1], [1, 1, 1, 1]])
         cluster_assignment = np.array([0, 0, 1, 1, 2, 2])
         solution = [[0.5, 8.5, 9, 6.5], [3.5, 3.5, 3.5, 3], [1, 1, 1, 1]]
-        result = clustering.cluster_medians(data, cluster_assignment)
+        result, _ = clustering.cluster_medians(data, cluster_assignment)
         self.assertEqual(result.tolist(), solution)
 
     def test_cluster_medians_order(self):
@@ -224,7 +224,7 @@ class TestClusteringMethods(unittest.TestCase):
                          [4, 3, 4, 3]])
         cluster_assignment = np.array([1, 0, 0, 1])
         solution = [[2, 5.5, 6, 4.5], [2, 6.5, 6.5, 5]]
-        result = clustering.cluster_medians(data, cluster_assignment)
+        result, _= clustering.cluster_medians(data, cluster_assignment)
         self.assertEqual(result.tolist(), solution)
 
     def test_cluster_median_multiple(self):
@@ -234,7 +234,7 @@ class TestClusteringMethods(unittest.TestCase):
                          [4, 3, 4, 3], [1, 1, 1, 1]])
         cluster_assignment = np.array([0, 0, 1, 1, 0])
         solution = [[1, 7, 9, 6], [3.5, 3.5, 3.5, 3]]
-        result = clustering.cluster_medians(data, cluster_assignment)
+        result, _ = clustering.cluster_medians(data, cluster_assignment)
         self.assertEqual(result.tolist(), solution)
     def test_add_link_add_index(self):
         """Should add indexes if not in link_dict."""
