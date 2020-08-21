@@ -1,0 +1,38 @@
+<html>
+
+<head>
+    <title>Monitoring Accessible Charts</title>
+    <script src="https://d3js.org/d3.v5.min.js"></script>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+</head>
+
+<body>
+    <h2>Monitoring Accessible Charts</h2>
+    <svg width="600" height="400" id="chart"></svg>
+
+    <div style="padding: 50 0 0 0; display:inline-block; vertical-align: top">
+    <div width ="100px">
+        Color:
+        <ul style="list-style-type:none">
+        <li>Algorithm: <select name="selectedMode" id="modeSelector"></select></li>
+        <li>Similarity: <select name="selectedSimilarity" id="similaritySelector"></select></li>
+        <li>Label Encoding: <select name="selectedEncoding" id="encodingSelector"></select></li>
+        <li>Outliers: <select name="selectedOutlier" id="outlierSelector"></select></li>
+        <li>Representation: <select name="selectedRep" id="repSelector"></select></li>
+    </ul>
+    </div>
+    <div>
+        Filter:
+        <ul style="list-style-type:none">
+        <li>Type: <select name="selectedFilter" id="filterSelector"></select></li>
+        <li>Options: <select name="selectedCluster" id="clusterSelector"></select></li>
+        </ul>
+    </div>
+    </div>
+
+    <script src="{{url_for('static',filename='helper.js')}}"></script>
+    <script src="{{url_for('static',filename='selector.js')}}"></script>
+    <script src="{{url_for('static',filename='chart.js')}}"></script>
+</body>
+
+</html>
