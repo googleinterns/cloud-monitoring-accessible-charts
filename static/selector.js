@@ -52,14 +52,9 @@ const selectors = async (svg, tsData, colorScale, yScale, dateScale,
     updateSelector("cluster", ["All"]);
     updateCluster();
     if (currentMode == "Default") {
-      if (chartMode != "lines") {
-        drawLines(svg, tsData, colorScale, yScale, dateScale, margin);
-        chartMode = "lines";
-      }
-      d3.selectAll(".timeSeries")
-          .attr("stroke", (d) => colorScale(d))
-          .attr("opacity", 1)
-          .attr("class", "timeSeries cluster-All");
+      d3.selectAll(".timeSeries").remove();
+      drawLines(svg, tsData, colorScale, yScale, dateScale, margin);
+      chartMode = "lines";
       clusters = ["All"];
       updateFilter();
     } else {
@@ -148,7 +143,8 @@ function updateCluster() {
 
   if (currentCluster == "All") {
     d3.selectAll(".timeSeries")
-        .attr("opacity", currentRep == "Bands" ? 0.5 : 1);
+        .attr("opacity", currentRep == "Bands" && chartMode == "bands" ?
+        0.5 : 1);
   } else if (currentFilter == "Cluster") {
     d3.selectAll(".cluster-" + currentCluster)
         .attr("opacity", currentRep == "Bands" ? 0.5 : 1);
@@ -173,6 +169,6 @@ function updateFilter() {
   } else {
     updateSelector("cluster", allZones);
   }
- 
+
   updateCluster();
 }
