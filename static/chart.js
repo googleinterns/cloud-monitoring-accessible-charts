@@ -77,7 +77,7 @@ const drawChart = async () => {
           .attr("transform",
               "translate(" + margin.left + ", " + margin.top + ")");
 
-      const colors = ["#ee99bb", "#cc5588", "#9144BB", "#7e21ff",
+      const colors = ["#ee99bb", "#cc5588", "#9144BB", "#B474DF",
         "#2266ff", "#4593db", "#44dcb4", "#3DAF21", "#eaca58", "#e99958",
         "#8A8883", "#994F14", "#123898"];
       const colorScale = d3.scaleOrdinal().range(colors);
@@ -188,7 +188,7 @@ function drawLines(svg, formattedData, colorScale, yScale, dateScale, margin) {
  */
 function drawBands(minMax, dates, svg, colorScale, yScale, dateScale, margin,
     outlierLines) {
-    drawLines(svg, outlierLines, colorScale, yScale, dateScale, margin);
+  drawLines(svg, outlierLines, colorScale, yScale, dateScale, margin);
 
   minMax.forEach(([minTS, maxTS], index) => {
     const minLine = minTS.map((val, i) => [val, maxTS[i], new Date(dates[i])]);
